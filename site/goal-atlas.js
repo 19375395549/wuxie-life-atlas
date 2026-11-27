@@ -150,7 +150,7 @@ function startGoalAtlas() {
     el('atlas-prev').disabled=page===0;el('atlas-next').disabled=page>=totalPages-1;
     el('back').disabled=trail.length===1;
     el('atlas-crumb').replaceChildren(...trail.map((id,index)=>button(nodes.get(id)?.name||id,()=>navigate(trail.slice(0,index+1)))));
-    const visibleIds=isNebula()?visibleRows.map(row=>row.id):[trail.at(-1),...children.slice(page*3,page*3+3)];
+    const visibleIds=isNebula()?[root.id,...visibleRows.map(row=>row.id)]:[trail.at(-1),...children.slice(page*3,page*3+3)];
     accessible.replaceChildren(new Option('选择节点',''),...visibleIds.map(id=>new Option(nodes.get(id)?.name||id,id)));
     accessible.value=visibleIds.includes(selection)?selection:'';
     const hiddenSelection=isNebula()&&recordsById.has(selection)&&!visibleIds.includes(selection);
@@ -265,7 +265,6 @@ function startGoalAtlas() {
         ctx.beginPath();ctx.ellipse(centerX,centerY,Math.min(width,height)*size*options.zoom,Math.min(width,height)*size*options.zoom,0,0,Math.PI*2);
         ctx.strokeStyle='#41617a55';ctx.stroke();
       }
-      circle(centerX,centerY,6);ctx.fillStyle='#a7efec77';ctx.fill();
     }
     let marks=isNebula()?orbitalPositions(width,height):bubblePositions(width,height,time);
     if(isNebula()&&focusTarget){
@@ -278,7 +277,10 @@ function startGoalAtlas() {
         if(Math.hypot(dx,dy)<2)focusTarget=null;
       }else focusTarget=null;
     }
-    if(isNebula())marks.sort((a,b)=>a.depth-b.depth);
+    if(isNebula()){
+      marks.sort((a,b)=>a.depth-b.depth);
+      marks.push({id:root.id,x:width/2+pan.x,y:height/2+pan.y,r:14});
+    }
     else for(const mark of marks.slice(1)){
       ctx.beginPath();ctx.moveTo(marks[0].x,marks[0].y);ctx.lineTo(mark.x,mark.y);ctx.strokeStyle='#61a2b17b';ctx.stroke();
     }
@@ -402,6 +404,18 @@ function startGoalAtlas() {
     const row=recordsById?.get(node.id);
     const section=document.createElement('section');
     section.className='needs-record';
+    if(node===root){
+      const summary=cloudSnapshot?.summary;
+      const cash=recordsById?.get('G001-01')?.budget;
+      const totals=[
+        '目标总览 · '+(summary?.goalCount??0)+' 项',
+        '现金财富目标 · '+budgetText(cash),
+        '终身消费预算 · '+budgetText(summary?.consumption),
+        '投资计划本金 · '+budgetText(summary?.investment)
+      ];
+      for(const value of totals){const line=document.createElement('div');line.textContent=value;section.append(line);}
+      if(!readOnlyView)section.append(button('重命名目标树',()=>openCategoryEditor('goals',root.id)));
+    }
     if(row){
       const descriptions=[
         ['编号',row.id.length===36?'未编号':row.id],['类别',branchName(row.branch)],

@@ -77,7 +77,7 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
  <button type="button" id="sync-notion-now" class="primary" aria-label="从 Notion 读取最新数据">↻ 从 Notion 刷新</button>
  <span id="cloud-sync-time" class="dim" style="font-size:12px" role="status" aria-live="polite">尚未完成云端读取</span>
  <small class="dim" style="letter-spacing:0">前台每60秒检查 · 返回网页时检查</small>
-</div><h1>无邪人生目标树</h1><p>60 年终身预算 · 目标星图 × 痛点金字塔　<span class="eyebrow">LIFETIME BUDGET ATLAS</span></p><div class="entry-actions" id="entry-actions"><button type="button" class="primary" id="open-goal-entry">＋ 登记新目标</button><button type="button" class="primary" id="open-pain-entry">＋ 登记新痛点</button><span class="entry-hint">点击后展开表单；填写目标或痛点名称，再点“确认登记”。</span><span class="save-state" id="save-state" role="status" aria-live="polite">正在检测保存方式…</span></div><div class="status-helper" id="run-status" role="status" aria-live="polite"><b>交互状态：</b><span id="run-status-text" class="warning">尚未确认可用。如果点击登记无反应，请先下载 HTML 文件，使用 Windows 上的 Chrome 打开本地文件；不要直接在聊天文件预览中填写。</span><button type="button" id="run-self-check">检测按钮是否能响应</button></div><div class="stats"><div class="box"><span>60 年工资收入假设</span><strong id="income-total">—</strong></div><div class="box"><span>终身消费预算 · B001</span><strong id="budget-total">816.87 万</strong></div><div class="box"><span>P0 温饱保障目标</span><strong id="survival-threshold-display">100 万</strong></div><div class="box"><span>已录入实际值 / 具体目标</span><strong id="count">— / 30</strong></div></div>
+</div><h1 id="atlas-title">无邪人生目标树</h1><p>60 年终身预算 · 目标星图 × 痛点金字塔　<span class="eyebrow">LIFETIME BUDGET ATLAS</span></p><div class="entry-actions" id="entry-actions"><button type="button" class="primary" id="open-goal-entry">＋ 登记新目标</button><button type="button" class="primary" id="open-pain-entry">＋ 登记新痛点</button><span class="entry-hint">点击后展开表单；填写目标或痛点名称，再点“确认登记”。</span><span class="save-state" id="save-state" role="status" aria-live="polite">正在检测保存方式…</span></div><div class="status-helper" id="run-status" role="status" aria-live="polite"><b>交互状态：</b><span id="run-status-text" class="warning">尚未确认可用。如果点击登记无反应，请先下载 HTML 文件，使用 Windows 上的 Chrome 打开本地文件；不要直接在聊天文件预览中填写。</span><button type="button" id="run-self-check">检测按钮是否能响应</button></div><div class="stats"><div class="box"><span>60 年工资收入假设</span><strong id="income-total">—</strong></div><div class="box"><span>终身消费预算 · B001</span><strong id="budget-total">816.87 万</strong></div><div class="box"><span>P0 温饱保障目标</span><strong id="survival-threshold-display">100 万</strong></div><div class="box"><span>已录入实际值 / 具体目标</span><strong id="count">— / 30</strong></div></div>
 <section class="panel editor-only" id="needs-center">
  <div class="row between"><h2>资产与需求控制中心</h2><small>动态需求模型 V3.0</small></div>
  <div id="needs-metrics" class="needs-grid"></div>
@@ -196,7 +196,7 @@ function save(){try{localStorage.setItem(key,JSON.stringify(records));el('msg').
 function route(id){if(!nodes.has(id))return;selected=nodes.get(id);window.goalAtlas?.follow(id);refresh()}
 function activateGoal(id){
  route(id);
- if(id===root.id||cloudSnapshot?.hierarchy?.goals.some(node=>node.id===id))openCategoryEditor('goals',id===root.id?null:id);
+ if(id===root.id||cloudSnapshot?.hierarchy?.goals.some(node=>node.id===id))openCategoryEditor('goals',id);
  else openRecordEditor('goals',id);
 }
 function button(name,handler){const newButton=document.createElement('button');newButton.textContent=name;newButton.onclick=handler;return newButton}
@@ -406,27 +406,29 @@ el('category-close').onclick=()=>categoryDialog.close();
 el('goal-category-add').onclick=()=>openCategoryEditor('goals',null,selected.categoryNode?selected.id:root.id);
 function openCategoryEditor(kind,id,parent){
  if(readOnlyView||!cloudReady||cloudBusy)return;
- const item=activeHierarchy?.[kind].find(node=>node.id===id);
+ const isRoot=kind==='goals'&&id===root.id;
+ const item=isRoot?{id:root.id,name:root.name,parent:root.id}:activeHierarchy?.[kind].find(node=>node.id===id);
  const form=el('category-form'),name=el('category-name'),parents=el('category-parent'),order=el('category-order'),feedback=el('category-feedback');
  const addChild=el('category-add-child'),remove=el('category-delete');
- el('category-title').textContent=item?'编辑分类':'新增分类';
+ el('category-title').textContent=isRoot?'重命名目标树':item?'编辑分类':'新增分类';
  name.value=item?.name||'';
  categoryOptions(parents,kind,id);
  parents.value=item?.parent??parent??(kind==='goals'?root.id:'');
  order.value=item?.order??'';
- order.parentElement.hidden=!item;
- addChild.hidden=remove.hidden=!item;
+ parents.parentElement.hidden=isRoot;
+ order.parentElement.hidden=!item||isRoot;
+ addChild.hidden=!item;remove.hidden=!item||isRoot;
  feedback.textContent='';
  async function submit(method,payload){
    if(cloudBusy)return;
-   const url='/api/categories/'+kind+(item?'/'+encodeURIComponent(item.id):'');
+   const url='/api/categories/'+kind+(isRoot?'/root':item?'/'+encodeURIComponent(item.id):'');
    await withCloudSave(async()=>{
      await cloudApi(url,method,payload);
      categoryDialog.close();
      return '分类已保存到 Notion。';
    },feedback);
  }
- form.onsubmit=event=>{event.preventDefault();const payload={name:name.value,parent:parents.value};if(item&&order.value!=='')payload.order=order.valueAsNumber;submit(item?'PATCH':'POST',payload)};
+ form.onsubmit=event=>{event.preventDefault();const payload=isRoot?{name:name.value}:{name:name.value,parent:parents.value};if(item&&!isRoot&&order.value!=='')payload.order=order.valueAsNumber;submit(item?'PATCH':'POST',payload)};
  addChild.onclick=()=>openCategoryEditor(kind,null,id);
  remove.onclick=()=>{if(confirm('删除分类「'+item.name+'」？'))submit('DELETE')};
  if(!categoryDialog.open)categoryDialog.showModal();
@@ -457,6 +459,9 @@ async function loadCloud(){
  // 只有拿到有效云端快照后才开始更新视图，杜绝把网络故障误当成空数据。
  if(!Array.isArray(data.goals)||!Array.isArray(data.pains)||!data.summary)throw Error('Notion 返回数据结构不完整');
  cloudSnapshot=data;
+ root.name=data.goalRoot?.name||'无邪人生目标树';
+ el('atlas-title').textContent=root.name;
+ document.title=root.name;
  activeHierarchy=data.hierarchy;
  if(activeHierarchy){
    applyGoalCategories(activeHierarchy.goals);
@@ -588,7 +593,7 @@ renderPainDetail=function(){
 el('exporter').onclick=async()=>{
  try{
  const data=await cloudApi('/api/state');
- const blob=new Blob([JSON.stringify({version:'V3.0',source:'Notion',exportedAt:new Date().toISOString(),goals:data.goals,pains:data.pains,hierarchy:data.hierarchy,needs:window.needsUI?.backup()},null,2)],{type:'application/json'});
+ const blob=new Blob([JSON.stringify({version:'V3.0',source:'Notion',exportedAt:new Date().toISOString(),goals:data.goals,pains:data.pains,hierarchy:data.hierarchy,goalRoot:data.goalRoot,needs:window.needsUI?.backup()},null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='无邪人生目标树-V3.0-备份.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
  el('msg').textContent='已导出 Notion 最新数据备份。';
  }catch(error){el('msg').textContent='导出失败：'+error.message}
