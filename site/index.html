@@ -52,7 +52,7 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
   <div class="subheader"><div class="row between"><b>痛点登记簿</b><small id="pain-matches"></small></div><div class="row"><input id="pain-q" placeholder="搜索痛点编号、名称或对应目标" aria-label="搜索痛点"><button id="clear-pain-filter">清除筛选</button></div><div id="pain-register" class="pain-register"></div></div>
   <details id="pain-entry" data-entry><summary>＋ 继续登记痛点</summary><form id="pain-add-form" class="form-grid" novalidate><label>痛点名称<input id="new-pain-name" required maxlength="100" placeholder="填写真实需要解决的问题"></label><label>暂定层级<select id="new-pain-tier"><option value="L0">P0 生存保障</option><option value="L1">P1 经济与职业安全</option><option value="L2">P2 健康与生活</option><option value="L3">P3 资源与跨境能力</option><option value="L4">P4 情感与关系</option><option value="L5">P5 发展与商业</option></select></label><label>补充说明（选填）<input id="new-pain-note" maxlength="230" placeholder="具体场景、影响等"></label><button class="primary" type="button" id="confirm-pain-add">确认登记痛点</button></form><div class="entry-error" id="pain-entry-feedback" role="status" aria-live="polite"></div></details>
 </section>
-<div class="layout"><section class="stage"><div class="toolbar"><b>目标星图</b><button id="home">总览</button><button id="back">上一级</button><div class="tools"><button id="minus" aria-label="缩小">−</button><button id="plus" aria-label="放大">＋</button><button id="reset">复位视角</button></div></div><div id="scene"><canvas aria-label="三维目标树，可用右侧节点列表浏览相同内容"></canvas></div><div class="caption">拖动旋转 · 滚轮缩放 · 点击节点进入下一层　｜　大小和距离不代表金额</div></section><aside id="detail"></aside></div>
+<div class="layout"><section class="stage"><div class="toolbar"><b>目标星图</b><button id="home">总览</button><button id="back">上一级</button><div class="tools"><button id="minus" aria-label="缩小">−</button><button id="plus" aria-label="放大">＋</button><button id="reset">复位视角</button><button id="toggle-orbit" type="button">暂停旋转</button></div></div><div id="scene"><canvas aria-label="三维目标树，可用右侧节点列表浏览相同内容"></canvas></div><div class="caption">拖动旋转 · 滚轮缩放 · 点击节点进入下一层　｜　大小和距离不代表金额</div></section><aside id="detail"></aside></div>
 <section class="panel"><details open><summary>目标登记簿 <small id="goal-count-note">　GOAL INDEX / 30</small></summary><div class="row"><input id="q" aria-label="搜索目标" placeholder="搜索编号或目标名称"><select id="filter" aria-label="按分支筛选"><option value="">全部分支</option><option>G001</option><option>G002</option><option>G003</option></select><small id="matches"></small></div><div id="register" class="register"></div>
 <details class="subheader" id="goal-entry" data-entry><summary>＋ 新增目标（保留原编号，自动顺延）</summary>
 <form id="goal-add-form" class="form-grid" novalidate>
@@ -102,6 +102,35 @@ function draw(){const width=canvas.clientWidth,height=canvas.clientHeight,dpr=Ma
 for(let i=0;i<100;i++){const x=((i*947)%997)/997*width,y=((i*613)%991)/991*height;ctx.fillStyle=i%7===0?'#7796ab':'#344456';ctx.fillRect(x,y,i%7===0?1.4:1,1)}ring(.97,.44,'#344957');ring(1.01,.44,'#253749');ring(.57,.44,'#273d49');const points=[],origin=project(0,0,0);points.push({...origin,n:focus,r:focus===root?29:20,central:true});const children=focus.children,total=children.length;children.forEach((child,index)=>{let theta=(index/total)*2*Math.PI-Math.PI/2;let x,y,z;if(total===1){x=.60;y=-.18;z=.23}else if(total<=8){x=Math.cos(theta)*.84;y=Math.sin(theta)*.48;z=Math.sin(theta+.55)*.36}else{const col=index%4,row=Math.floor(index/4);x=(col-1.5)*.49;y=(row-1.5)*.30;z=Math.sin(index*1.8)*.18+.02}const p=project(x,y,z);path([origin,p],color(child)+'70',1.25);points.push({...p,n:child,r:total>8?6:focus===root?15:10,central:false});if(focus===root){for(let k=0;k<child.children.length;k++){const a=(k/(child.children.length||1))*Math.PI*2+.7;const s=project(x+Math.cos(a)*.18,y+Math.sin(a)*.095,z+.14*Math.sin(a));path([p,s],color(child)+'44');ctx.fillStyle=color(child)+'aa';ctx.beginPath();ctx.arc(s.x,s.y,2.4,0,7);ctx.fill()}}});hits=[];const labels=[],mobile=width<500;points.sort((left,right)=>left.z-right.z);for(const p of points){const c=color(p.n),r=p.r*Math.min(1.3,Math.max(.76,p.scale))*Math.min(1,zoom);let glow=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r*2.8);glow.addColorStop(0,c+'65');glow.addColorStop(1,c+'00');ctx.fillStyle=glow;ctx.fillRect(p.x-r*2.8,p.y-r*2.8,r*5.6,r*5.6);let sphere=ctx.createRadialGradient(p.x-r*.34,p.y-r*.38,0,p.x,p.y,r);sphere.addColorStop(0,'#f1fffb');sphere.addColorStop(.35,c);sphere.addColorStop(1,'#263c4d');ctx.fillStyle=sphere;ctx.beginPath();ctx.arc(p.x,p.y,r,0,2*Math.PI);ctx.fill();if(p.central||selected===p.n){ctx.strokeStyle=c+'99';ctx.beginPath();ctx.ellipse(p.x,p.y,r*1.44,r*.55,-.4,0,2*Math.PI);ctx.stroke()}hits.push({...p,r:Math.max(15,r+4)});labels.push({...p,r,c})}
 const occupied=[];for(const p of labels.sort((a,b)=>Number(b.n===selected)-Number(a.n===selected)||Number(b.central)-Number(a.central))){const short={'G001':'现金财富积累','G002':'生活物质与消费','G003':'投资资产','A':'温饱保障 · P0','B':'房产交通与数码','C':'健康与运动','D':'软件及数字服务'};const title=short[p.n.id]||p.n.name;ctx.font=`${p.central?'600':'500'} ${mobile?11:13}px system-ui`;const tw=ctx.measureText(title).width+14;const left=Math.max(2,Math.min(width-tw-2,p.x-tw/2));let top=p.y+p.r+6;const blocked=t=>occupied.some(box=>left<box.x+box.w&&left+tw>box.x&&t<box.y+box.h&&t+21>box.y);if(blocked(top))top=p.y-p.r-24;if(blocked(top)&&total>8&&p.n!==selected)continue;ctx.fillStyle='#101c29ec';ctx.fillRect(left,top,tw,21);ctx.fillStyle=p.c;ctx.textAlign='center';ctx.fillText(title,left+tw/2,top+15);occupied.push({x:left,y:top,w:tw,h:21});hits.push({n:p.n,box:{x:left,y:top,w:tw,h:21}})}ctx.textAlign='left';ctx.fillStyle='#88a3af';ctx.font='11px Consolas,monospace';ctx.fillText('ATLAS  /  '+focus.id,16,23)}
 let drag=null;canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:0}};canvas.onpointermove=e=>{if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.hypot(dx,dy);yaw+=dx*.009;pitch=Math.max(-1.35,Math.min(1.35,pitch+dy*.009));drag.x=e.clientX;drag.y=e.clientY;draw()};canvas.onpointerup=e=>{if(!drag||drag.id!==e.pointerId)return;if(drag.moved<6){const bounds=canvas.getBoundingClientRect(),x=e.clientX-bounds.left,y=e.clientY-bounds.top;const p=[...hits].reverse().find(mark=>mark.box?x>=mark.box.x&&x<=mark.box.x+mark.box.w&&y>=mark.box.y&&y<=mark.box.y+mark.box.h:Math.hypot(x-mark.x,y-mark.y)<mark.r);if(p)activateGoal(p.n.id)}drag=null};canvas.onpointercancel=()=>drag=null;function magnify(factor){zoom=Math.max(.55,Math.min(2.5,zoom*factor));draw()}canvas.addEventListener('wheel',e=>{e.preventDefault();magnify(e.deltaY<0?1.07:1/1.07)},{passive:false});el('plus').onclick=()=>magnify(1.15);el('minus').onclick=()=>magnify(1/1.15);el('reset').onclick=()=>{yaw=0;pitch=.13;zoom=1;draw()};new ResizeObserver(draw).observe(canvas);refresh();
+const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+const orbitButton=el('toggle-orbit');
+let orbitEnabled=!motionPreference.matches,orbitVisible=false,orbitFrame=0,lastOrbitTime=null;
+function scheduleOrbit(){
+ orbitButton.textContent=orbitEnabled?'暂停旋转':'自动旋转';
+ if(orbitEnabled&&orbitVisible&&!document.hidden){
+   if(!orbitFrame)orbitFrame=requestAnimationFrame(advanceOrbit);
+ }else{
+   cancelAnimationFrame(orbitFrame);
+   orbitFrame=0;
+   lastOrbitTime=null;
+ }
+}
+function advanceOrbit(time){
+ orbitFrame=requestAnimationFrame(advanceOrbit);
+ if(drag||el('record-editor').open){lastOrbitTime=null;return}
+ lastOrbitTime??=time;
+ const elapsed=time-lastOrbitTime;
+ if(elapsed<32)return;
+ lastOrbitTime=time;
+ yaw=(yaw+Math.min(elapsed,50)*0.00022)%(2*Math.PI);
+ draw();
+}
+orbitButton.onclick=()=>{orbitEnabled=!orbitEnabled;scheduleOrbit()};
+motionPreference.addEventListener('change',event=>{orbitEnabled=!event.matches;scheduleOrbit()});
+document.addEventListener('visibilitychange',scheduleOrbit);
+new IntersectionObserver(([entry])=>{orbitVisible=entry.isIntersecting;scheduleOrbit()}).observe(canvas);
+scheduleOrbit();
+
 </script>
 <script>
 /* V1.8 增量扩展：保留 V1.7 已有目标数据与实际值，新增目标、痛点及关系独立保存。 */
