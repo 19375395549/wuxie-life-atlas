@@ -271,10 +271,54 @@ async function patchPain(env,id,data,existingPains,goals,categories){
   return asPain(page,Object.fromEntries(goals.map(g=>[g.pageId,g.id])));
 }
 function errorResponse(e){return fail(e.message||'服务端处理失败',e.status>=400&&e.status<=599?e.status:500);}
+async function restoreArchivedRecords(env,data){
+  if(data.version!=='V3.0')throw Object.assign(new Error('备份版本无效'),{status:400});
+  const groups=[
+    {items:data.goals,source:env.NOTION_GOALS_SOURCE_ID,fields:GOAL_FIELDS,code:GOAL_CODE,amounts:['budget','actual']},
+    {items:data.pains,source:env.NOTION_PAINS_SOURCE_ID,fields:PAIN_FIELDS,code:/^P\d{3,}$/,amounts:[]}
+  ];
+  const uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+  const normalize=value=>String(value||'').replaceAll('-','').toLowerCase();
+  const seen=new Set();
+  for(const group of groups){
+    if(!Array.isArray(group.items)||group.items.length>1500)throw Object.assign(new Error('备份记录结构无效'),{status:400});
+    for(const item of group.items){
+      if(!item||typeof item.id!=='string'||typeof item.pageId!=='string'||!uuid.test(item.pageId)||
+        (!group.code.test(item.id)&&!(group.fields===GOAL_FIELDS&&item.id===item.pageId))||seen.has(item.pageId)){
+        throw Object.assign(new Error('备份必须包含原始 Notion 记录标识'),{status:400});
+      }
+      seen.add(item.pageId);
+      for(const field of group.amounts)validateAmount(item[field]);
+    }
+  }
+  const result={restored:0,active:0,unavailable:0};
+  for(const group of groups){
+    const live=new Set((await queryAll(env,group.source)).map(page=>page.id));
+    for(const item of group.items){
+      if(live.has(item.pageId)){result.active++;continue}
+      try {
+        const path='/pages/'+item.pageId;
+        const page=await notion(env,path);
+        const code=readPlain(page.properties?.[group.fields.id]).trim()||page.id;
+        if(normalize(page.parent?.data_source_id)!==normalize(group.source)||code!==item.id){
+          result.unavailable++;continue;
+        }
+        if(!page.in_trash&&!page.archived){result.active++;continue}
+        await notion(env,path,{method:'PATCH',body:{in_trash:false}});
+        result.restored++;
+      } catch {result.unavailable++}
+    }
+  }
+  return result;
+}
 async function api(request,env,url){
   const method=request.method,path=url.pathname;
   const origin=request.headers.get('Origin');if((method==='DELETE'&&origin!==url.origin)||(origin&&origin!==url.origin))return fail('拒绝跨站登记请求',403);
   try{
+    if(method==='POST'&&path==='/api/restore'){
+      if(origin!==url.origin)return fail('拒绝跨站恢复请求',403);
+      return json({ok:true,...await restoreArchivedRecords(env,await bodyJson(request,2000000))});
+    }
     if(method==='GET'&&path==='/api/state')return json(await state(env));
     if(method==='GET'&&path==='/api/health'){
       const [g,p]=await Promise.all([queryAll(env,env.NOTION_GOALS_SOURCE_ID),queryAll(env,env.NOTION_PAINS_SOURCE_ID)]);
@@ -323,7 +367,7 @@ async function api(request,env,url){
 }
 export default {
   async fetch(request,env,ctx){
-    const publicAssets = new Set(['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
+    const publicAssets = new Set(['/needs.js', '/needs-ui.js', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
     const url=new URL(request.url);
     const path=url.pathname;
     if (path==='/view' || path==='/view/' || path==='/view/state') {

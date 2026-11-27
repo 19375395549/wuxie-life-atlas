@@ -35,18 +35,63 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
 #record-editor fieldset label{display:flex;align-items:center;gap:8px;margin:4px 0}
 #record-editor textarea{min-height:70px}
 #record-editor .danger{color:#ffb5b5;border-color:#9a525a}
+.needs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:14px 0}
+.needs-grid div{background:#131e2d;border:1px solid #2c4455;border-radius:10px;padding:10px;display:grid;gap:5px}
+.needs-grid strong{font-size:1.15rem;color:#bcf7eb}
+#needs-settings{margin:12px 0}#needs-form label{display:grid;gap:4px}#needs-form .row{grid-column:1/-1}
+.needs-pyramid{display:flex;align-items:center;flex-direction:column;gap:10px;margin:10px 0 14px}
+.needs-pyramid button{width:100%;display:grid;justify-items:center;gap:5px;padding:12px;color:#e0edf7}
+.needs-pyramid button strong{font-size:clamp(15px,2vw,23px)}
+.needs-pyramid button span{color:#a8bfce}
+.needs-pyramid button[aria-pressed="true"] strong{color:#a6ffeb;text-decoration:underline}
+.needs-pyramid .needs-bin{background:#101a27;border-color:transparent}
+.needs-bin svg{width:62px;height:65px;filter:drop-shadow(0 0 8px #6bc4d977)}
+.needs-pyramid .needs-step{position:relative;isolation:isolate;background:transparent;border:0;min-height:78px;clip-path:polygon(12% 0,88% 0,100% 100%,0 100%)}
+.needs-step::before,.needs-step::after{content:"";position:absolute;inset:0;z-index:-1;clip-path:inherit;background:#429dc7}
+.needs-step::after{inset:2px;background:#162e44}
+.needs-pyramid .needs-soft{width:86%}
+.needs-essential::before{background:#4dd6be}.needs-essential::after{background:#143735}
+.needs-pyramid button:focus-visible{box-shadow:inset 0 0 0 5px #fff}
+#needs-queue{display:grid;gap:8px;margin:12px 0;padding-left:0;list-style:none}
+#needs-queue li{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px;border:1px solid #2c4455;border-radius:8px}
+#needs-queue li[draggable="true"]{cursor:grab}
+.needs-record{margin-top:12px;padding-top:12px;border-top:1px solid #2c4455}
+.needs-record ul{padding-left:20px}
 </style><link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#080d16">
-</head><body><main><header><div class="row"><span class="eyebrow">◈ &nbsp; WUXIE / LIFE ATLAS</span><b>人生规划控制台</b></div><small class="editor-only">V2.0.3 &nbsp; / &nbsp; Notion双向同步</small><small class="public-only">公开查看</small></header><div id="cloud-state" class="cloud-state wait" role="status" aria-live="polite">正在验证 Cloudflare Access 身份并连接 Notion 数据库……</div>
+</head><body><main><header><div class="row"><span class="eyebrow">◈ &nbsp; WUXIE / LIFE ATLAS</span><b>人生规划控制台</b></div><small class="editor-only">V3.0 &nbsp; / &nbsp; Notion双向同步</small><small class="public-only">公开查看</small></header><div id="cloud-state" class="cloud-state wait" role="status" aria-live="polite">正在验证 Cloudflare Access 身份并连接 Notion 数据库……</div>
 <div id="cloud-sync-tools" class="row" style="gap:10px;margin:9px 0 14px;align-items:center;flex-wrap:wrap">
  <button type="button" id="sync-notion-now" class="primary" aria-label="从 Notion 读取最新数据">↻ 从 Notion 刷新</button>
  <span id="cloud-sync-time" class="dim" style="font-size:12px" role="status" aria-live="polite">尚未完成云端读取</span>
  <small class="dim" style="letter-spacing:0">前台每60秒检查 · 返回网页时检查</small>
-</div><h1>无邪人生目标树</h1><p>60 年终身预算 · 目标星图 × 痛点金字塔　<span class="eyebrow">LIFETIME BUDGET ATLAS</span></p><div class="entry-actions" id="entry-actions"><button type="button" class="primary" id="open-goal-entry">＋ 登记新目标</button><button type="button" class="primary" id="open-pain-entry">＋ 登记新痛点</button><span class="entry-hint">点击后展开表单；填写目标或痛点名称，再点“确认登记”。</span><span class="save-state" id="save-state" role="status" aria-live="polite">正在检测保存方式…</span></div><div class="status-helper" id="run-status" role="status" aria-live="polite"><b>交互状态：</b><span id="run-status-text" class="warning">尚未确认可用。如果点击登记无反应，请先下载 HTML 文件，使用 Windows 上的 Chrome 打开本地文件；不要直接在聊天文件预览中填写。</span><button type="button" id="run-self-check">检测按钮是否能响应</button></div><div class="stats"><div class="box"><span>60 年工资收入假设</span><strong id="income-total">—</strong></div><div class="box"><span>终身消费预算 · B001</span><strong id="budget-total">816.87 万</strong></div><div class="box"><span>P0 温饱保障目标</span><strong>100 万</strong></div><div class="box"><span>已录入实际值 / 具体目标</span><strong id="count">— / 30</strong></div></div>
+</div><h1>无邪人生目标树</h1><p>60 年终身预算 · 目标星图 × 痛点金字塔　<span class="eyebrow">LIFETIME BUDGET ATLAS</span></p><div class="entry-actions" id="entry-actions"><button type="button" class="primary" id="open-goal-entry">＋ 登记新目标</button><button type="button" class="primary" id="open-pain-entry">＋ 登记新痛点</button><span class="entry-hint">点击后展开表单；填写目标或痛点名称，再点“确认登记”。</span><span class="save-state" id="save-state" role="status" aria-live="polite">正在检测保存方式…</span></div><div class="status-helper" id="run-status" role="status" aria-live="polite"><b>交互状态：</b><span id="run-status-text" class="warning">尚未确认可用。如果点击登记无反应，请先下载 HTML 文件，使用 Windows 上的 Chrome 打开本地文件；不要直接在聊天文件预览中填写。</span><button type="button" id="run-self-check">检测按钮是否能响应</button></div><div class="stats"><div class="box"><span>60 年工资收入假设</span><strong id="income-total">—</strong></div><div class="box"><span>终身消费预算 · B001</span><strong id="budget-total">816.87 万</strong></div><div class="box"><span>P0 温饱保障目标</span><strong id="survival-threshold-display">100 万</strong></div><div class="box"><span>已录入实际值 / 具体目标</span><strong id="count">— / 30</strong></div></div>
+<section class="panel editor-only" id="needs-center">
+ <div class="row between"><h2>资产与需求控制中心</h2><small>动态需求模型 V3.0</small></div>
+ <div id="needs-metrics" class="needs-grid"></div>
+ <div class="row"><p id="needs-notice" role="status"></p><button id="needs-survival-link" type="button">查看温饱保障目标</button></div>
+ <details id="needs-settings">
+  <summary>需求标准设置</summary>
+  <form id="needs-form" class="form-grid">
+   <label>个人资产总额（元）<input name="assets" type="number" min="0" max="10000000000000" step=".01"></label>
+   <label>个人负债总额（元）<input name="debts" type="number" min="0" max="10000000000000" step=".01"></label>
+   <label>可支配净资产（元）<input name="available" type="number" min="0" max="10000000000000" step=".01"></label>
+   <label>生存保障标准（元）<input name="threshold" type="number" required min="0" max="10000000000000" step=".01"></label>
+   <label>需求衡量标准<select name="standard"></select></label>
+   <label>自定义标准<input name="customStandard" maxlength="100"></label>
+   <label>资金排序<select name="sortMode"><option value="amountAsc">金额由低到高</option><option value="amountDesc">金额由高到低</option><option value="manual">手动执行顺序</option></select></label>
+   <label><span><input name="survival" type="checkbox"> 温饱保障目标已达成</span></label>
+   <label><span><input name="autoUpgrade" type="checkbox"> 自动升级</span></label>
+   <label><span><input name="autoDowngrade" type="checkbox"> 自动降级</span></label>
+   <div class="row"><button class="primary" type="submit">保存设置</button><button id="needs-reset" type="button">恢复默认设置</button><span id="needs-feedback" role="status"></span></div>
+  </form>
+  <p class="tiny">可支配净资产只填可用于配置的净资金。资产及需求设置保存在此浏览器。</p>
+ </details>
+ <details><summary>资金配置顺序</summary><ol id="needs-queue"></ol></details>
+</section>
 <section class="panel pain-panel" id="pain-section">
   <div class="row between"><div><span class="section-kicker">PAIN → GOAL / PROBLEM ATLAS</span><h2>痛点金字塔</h2><p>从痛点出发，关联已有目标；未覆盖的问题标记为「待登记目标」。分层为可调整的初稿，不代表所有痛点已解决。</p></div><small id="pain-count-note">20 个痛点</small></div>
   <div class="pain-layout">
-    <div class="pyramid-panel"><div class="row between"><b>痛点层级</b><button id="all-pains">查看全部</button></div><div id="pain-category-path" class="row"></div><div id="pyramid" class="pyramid" aria-label="点击金字塔各层筛选痛点"></div><p class="tiny">下层偏向基本保障；上层偏向关系、资源与成长。仅是登记排序，可后续调整。</p></div>
+    <div class="pyramid-panel"><div class="row between"><b>痛点层级</b><button id="all-pains">查看全部</button></div><div id="needs-pyramid" class="needs-pyramid" aria-label="按需求等级筛选痛点"></div><details id="pain-category-browser"><summary>按原分类浏览</summary><div id="pain-category-path" class="row"></div><div id="pyramid" class="pyramid" aria-label="点击金字塔各层筛选痛点"></div><p class="tiny">下层偏向基本保障；上层偏向关系、资源与成长。仅是登记排序，可后续调整。</p></details></div>
     <div class="pain-detail" id="pain-detail" aria-live="polite"></div>
   </div>
   <div class="subheader"><div class="row between"><b>痛点登记簿</b><small id="pain-matches"></small></div><div class="row"><input id="pain-q" placeholder="搜索痛点编号、名称或对应目标" aria-label="搜索痛点"><button id="clear-pain-filter">清除筛选</button></div><div id="pain-register" class="pain-register"></div></div>
@@ -62,7 +107,7 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
 <label>目标预算/金额（元，可不填）<input id="new-goal-budget" type="number" min="0" step="0.01" placeholder="待确认"></label>
 <label>说明（选填）<input id="new-goal-note" maxlength="250" placeholder="数量、周期或交付条件"></label>
 <button class="primary" type="button" id="confirm-goal-add">确认登记新目标</button></form><div class="entry-error" id="goal-entry-feedback" role="status" aria-live="polite"></div>
-<p class="tiny">点击登记簿中的条目可修改或删除。金额留空表示「待确认」。</p><p class="entry-feedback-info">若按钮点击后没有任何反馈：若无法登记，请查看网页顶部的云端连接状态；本版必须在线登录才能写入 Notion。</p></details></details></section><section class="panel"><details><summary>60 年资金推演 <small>　SCENARIO LAB</small></summary><p>修改月薪会更新顶部收入假设和本次推演。新增目标金额计入推演；未定预算不计入。</p><label>假设税后月薪（元） <input id="salary" type="number" min="0" step="100" value="15000"></label><p id="scenario"></p><small>固定工资 × 720 个月；不计起始现金、通胀、收益、退休变化或未登记支出。均摊不代表实际购买能力。</small></details></section><footer class="row between"><div>当前正式源码 V2.0.3（基于已上线 V2.0.2）　｜　所有金额为人民币；Notion 是唯一云端数据源；原有历史不删除</div><div class="tools"><button id="exporter">导出全部登记</button><button id="importer">导入备份</button><a class="public-only" href="/">管理入口 · 需要登录</a><input type="file" id="file" accept=".json" hidden></div></footer><div id="msg" role="status"></div></main>
+<p class="tiny">点击登记簿中的条目可修改或删除。金额留空表示「待确认」。</p><p class="entry-feedback-info">若按钮点击后没有任何反馈：若无法登记，请查看网页顶部的云端连接状态；本版必须在线登录才能写入 Notion。</p></details></details></section><section class="panel"><details><summary>60 年资金推演 <small>　SCENARIO LAB</small></summary><p>修改月薪会更新顶部收入假设和本次推演。新增目标金额计入推演；未定预算不计入。</p><label>假设税后月薪（元） <input id="salary" type="number" min="0" step="100" value="15000"></label><p id="scenario"></p><small>固定工资 × 720 个月；不计起始现金、通胀、收益、退休变化或未登记支出。均摊不代表实际购买能力。</small></details></section><footer class="row between"><div>动态需求模型 V3.0　｜　所有金额为人民币；Notion 是唯一云端数据源；原有历史不删除</div><div class="tools"><button id="exporter">导出全部登记</button><button id="importer">导入备份</button><a class="public-only" href="/">管理入口 · 需要登录</a><input type="file" id="file" accept=".json" hidden></div></footer><div id="msg" role="status"></div></main>
 <dialog id="record-editor" aria-labelledby="record-title">
  <form id="record-form">
   <h2 id="record-title"></h2>
@@ -221,9 +266,9 @@ function renderPyramid(){if(activeHierarchy){renderPainCategories();return}let b
 function renderPainDetail(){const p=painById(painFocus);if(!p){el('pain-detail').textContent='请选择痛点';return}const linked=linkedIds(p);const box=el('pain-detail');box.innerHTML='<small class="section-kicker">PAIN INSPECTOR / '+esc(p.id)+'</small><h3>'+esc(p.name)+'</h3><p class="tiny">'+esc(tierName(p.tier))+'</p><p>'+esc(p.note||'具体情况待补充。')+'</p><h3>对应目标</h3><div class="mapped" id="mapped-goals"></div><div class="map-add"><select id="pain-select-goal" aria-label="选择要关联的目标"><option value="">选择已有目标…</option></select><button type="button" class="primary" id="pain-link">关联目标</button></div><p class="tiny">不能直接对应的痛点，先保留“待登记目标”；新增目标后再关联。关联不等于已经解决。</p>';
 const area=el('mapped-goals');if(!linked.length)area.innerHTML='<span class="tiny">待登记对应目标</span>';else for(const id of linked){let b=document.createElement('button');b.className='chip';b.textContent=id+' · '+nodes.get(id).name;b.title='点击查看对应目标';b.onclick=()=>route(id);area.append(b)}
 const opts=el('pain-select-goal');for(const goal of goals){const opt=document.createElement('option');opt.value=goal.id;opt.textContent=goal.id+' · '+goal.name;opts.append(opt)}el('pain-link').onclick=()=>{const id=opts.value;if(!id||linked.includes(id))return;const arr=Array.isArray(painLinks[p.id])?painLinks[p.id]:[];painLinks[p.id]=[...new Set([...arr,id])];persistV18(linksKey,painLinks);renderPain()}}
-function renderPainRegister(){let query=el('pain-q').value.trim().toLowerCase();const items=allPains().filter(p=>(painTierFilter===null||belongsToPainCategory(p.tier,painTierFilter))&&[p.id,p.name,...linkedIds(p)].join(' ').toLowerCase().includes(query));el('pain-count-note').textContent=allPains().length+' 个痛点';el('pain-matches').textContent='匹配 '+items.length+' 项';const target=el('pain-register');target.replaceChildren();for(const p of items){const b=document.createElement('button');b.className='pain-item'+(painFocus===p.id?' active-pain':'');b.innerHTML='<small>'+esc(p.id)+' / '+esc(tierName(p.tier))+'</small><strong>'+esc(p.name)+'</strong><span class="tag">'+(linkedIds(p).length?linkedIds(p).map(esc).join('、'):'待登记对应目标')+'</span>';b.onclick=()=>{painFocus=p.id;renderPain();openRecordEditor('pains',p.id)};target.append(b)}if(!items.length)target.textContent='没有匹配的痛点。'}
-function renderPain(){renderPyramid();renderPainDetail();renderPainRegister()}
-el('all-pains').onclick=()=>{painTierFilter=null;renderPain()};el('clear-pain-filter').onclick=()=>{painTierFilter=null;el('pain-q').value='';renderPain()};el('pain-q').oninput=renderPainRegister;
+function renderPainRegister(){let query=el('pain-q').value.trim().toLowerCase();const items=allPains().filter(p=>(!window.needsUI||window.needsUI.includes(p.id))&&(painTierFilter===null||belongsToPainCategory(p.tier,painTierFilter))&&[p.id,p.name,...linkedIds(p)].join(' ').toLowerCase().includes(query));el('pain-count-note').textContent=allPains().length+' 个痛点';el('pain-matches').textContent='匹配 '+items.length+' 项';const target=el('pain-register');target.replaceChildren();for(const p of items){const b=document.createElement('button');b.className='pain-item'+(painFocus===p.id?' active-pain':'');b.innerHTML='<small>'+esc(p.id)+' / '+esc(tierName(p.tier))+(window.needsUI?' · '+esc(window.needsUI.level(p.id)):'')+'</small><strong>'+esc(p.name)+'</strong><span class="tag">'+(linkedIds(p).length?linkedIds(p).map(esc).join('、'):'待登记对应目标')+'</span>';b.onclick=()=>{painFocus=p.id;renderPain();openRecordEditor('pains',p.id)};target.append(b)}if(!items.length)target.textContent='没有匹配的痛点。'}
+function renderPain(){window.needsUI?.refresh();renderPyramid();renderPainDetail();renderPainRegister()}
+el('all-pains').onclick=()=>{window.needsUI?.clear();painTierFilter=null;renderPain()};el('clear-pain-filter').onclick=()=>{window.needsUI?.clear();painTierFilter=null;el('pain-q').value='';renderPain()};el('pain-q').oninput=renderPainRegister;
 el('pain-add-form').onsubmit=e=>{e.preventDefault();const name=el('new-pain-name').value.trim(),tier=el('new-pain-tier').value,note=el('new-pain-note').value.trim(),feedback=el('pain-entry-feedback');if(!name){feedback.textContent='请先填写痛点名称（必填）。';el('new-pain-name').focus();return}if(!tiers.some(t=>t.id===tier)){feedback.textContent='请选择有效层级。';return}const next=allPains().reduce((n,p)=>Math.max(n,Number(p.id.slice(1))),0)+1;const pain={id:'P'+String(next).padStart(3,'0'),name,tier,note:note||'对应目标待确认。',goals:[]};extraPains.push(pain);const saved=persistV18(painsKey,extraPains);painFocus=pain.id;painTierFilter=null;el('new-pain-name').value='';el('new-pain-note').value='';renderPain();feedback.innerHTML='<div class="entry-success">'+esc(pain.id)+' · '+esc(name)+(saved?' 已登记并保存在当前浏览器':' 已加入当前页面，但未持久保存；请导出备份')+'。</div>';feedback.scrollIntoView({block:'nearest'});el('msg').textContent=saved?'登记成功：'+pain.id+' · '+name+'。已保存至当前浏览器。':'登记成功但无法持久保存：'+pain.id+'。请导出备份。'};
 function formatWan(amount){
  return (amount/10000).toLocaleString('zh-CN',{maximumFractionDigits:2})+' 万';
@@ -323,7 +368,7 @@ function renderPainCategories(){
  const categories=activeHierarchy.pains,box=el('pyramid'),path=el('pain-category-path');
  const current=categories.find(node=>node.id===painTierFilter);
  path.replaceChildren();box.replaceChildren();
- function selectCategory(id){painTierFilter=id;renderPain()}
+ function selectCategory(id){window.needsUI?.clear();painTierFilter=id;renderPain()}
  if(current){
    path.append(button('返回上级',()=>selectCategory(current.parent||null)));
    path.append(document.createTextNode(current.name));
@@ -513,6 +558,7 @@ el('pain-add-form').onsubmit=async event=>{
 const legacyPainDetail=renderPainDetail;
 renderPainDetail=function(){
  legacyPainDetail();
+ window.needsUI?.detail(el('pain-detail'),painFocus);
  const select=el('pain-select-goal'),link=el('pain-link');
  if(!select||!link)return;
  link.disabled=!cloudReady||cloudBusy;
@@ -526,8 +572,8 @@ renderPainDetail=function(){
 el('exporter').onclick=async()=>{
  try{
  const data=await cloudApi('/api/state');
- const blob=new Blob([JSON.stringify({version:'V2.0',source:'Notion',exportedAt:new Date().toISOString(),goals:data.goals,pains:data.pains},null,2)],{type:'application/json'});
- const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='无邪人生目标树-V2.0-Notion备份.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+ const blob=new Blob([JSON.stringify({version:'V3.0',source:'Notion',exportedAt:new Date().toISOString(),goals:data.goals,pains:data.pains,hierarchy:data.hierarchy,needs:window.needsUI?.backup()},null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='无邪人生目标树-V3.0-备份.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
  el('msg').textContent='已导出 Notion 最新数据备份。';
  }catch(error){el('msg').textContent='导出失败：'+error.message}
 };
@@ -535,8 +581,19 @@ el('exporter').onclick=async()=>{
 el('importer').onclick=()=>el('file').click();
 el('file').onchange=async()=>{
  const inp=el('file');try{
-  const file=inp.files[0];if(!file)return;if(file.size>300000)throw Error('备份文件过大');
-  const payload=JSON.parse(await file.text());if(!['V1.7','V1.8'].includes(payload.version))throw Error('当前只支持V1.7/V1.8旧版备份');
+  const file=inp.files[0];if(!file)return;if(file.size>2000000)throw Error('备份文件过大');
+  const payload=JSON.parse(await file.text());
+  if(payload.version==='V3.0'){
+    const settings=Needs.validate(payload.needs);
+    if(!confirm('恢复此浏览器的资产设置，并将仍在 Notion 废纸篓中的原始目标和痛点恢复？'))return;
+    await withCloudSave(async()=>{
+      const result=await cloudApi('/api/restore','POST',{version:payload.version,goals:payload.goals,pains:payload.pains});
+      window.needsUI.restore(settings);
+      return '资产设置已恢复。Notion 恢复 '+result.restored+' 条，现存 '+result.active+' 条，无法恢复 '+result.unavailable+' 条。';
+    },null);
+    return;
+  }
+  if(!['V1.7','V1.8'].includes(payload.version))throw Error('不支持此备份版本');
   if(!confirm('将旧版备份增量写入 Notion？只增加缺失记录；已有金额不覆盖，历史不删除。'))return;
   cloudStatus('正在导入旧版备份，请勿关闭页面……','wait');
   let state=await cloudApi('/api/state'),added=0,updated=0,skipped=0;
@@ -605,6 +662,7 @@ function openRecordEditor(kind,id){
  field(isGoal?'优先级':'层级',select,isGoal?item.priority:(item.category??item.tier));
  let goalCategory;
  if(isGoal){goalCategory=document.createElement('select');categoryOptions(goalCategory,'goals');field('显示分类',goalCategory,item.category??root.id);}
+ const modelFields=window.needsUI?.edit(fields,kind,item);
  let budget,actual,links=[];
  if(isGoal){
    const currency=(label,value)=>{
@@ -628,6 +686,8 @@ function openRecordEditor(kind,id){
  const controls=form.querySelectorAll('button');
  async function submit(method,payload){
    if(cloudBusy||!recordEditor.open)return;
+   let model;
+   try{if(method==='PATCH')model=modelFields?.()}catch(error){feedback.textContent=error.message;return}
    cloudBusy=true;blockActions(true);
    controls.forEach(button=>button.disabled=true);
    feedback.textContent='正在写入 Notion…';
@@ -635,6 +695,7 @@ function openRecordEditor(kind,id){
    try{
      await cloudApi('/api/'+kind+'/'+encodeURIComponent(id),method,{pageId:item.pageId,...payload});
      saved=true;
+     if(model)window.needsUI.saveRecord(kind,item.id,model);
      await loadCloud();
      recordEditor.close();
      el('msg').textContent=method==='DELETE'?'已移到 Notion 废纸篓：'+id:'已保存到 Notion：'+id;
@@ -690,4 +751,4 @@ window.addEventListener('pageshow',event=>{if(event.persisted)syncFromNotion('pa
 setInterval(()=>syncFromNotion('periodic'),60000);
 cloudStatus(readOnlyView?'正在读取公开目标数据……':'正在连接 Notion 数据库……','wait');
 syncFromNotion('startup');
-</script></body></html>
+</script><script src="/needs.js"></script><script src="/needs-ui.js"></script></body></html>

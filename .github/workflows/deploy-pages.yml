@@ -6,6 +6,7 @@ on:
     paths:
       - 'site/**'
       - 'validate.mjs'
+      - 'test-needs.cjs'
       - '.github/workflows/deploy-pages.yml'
   pull_request:
     branches: [main]
