@@ -1,8 +1,8 @@
 # 无邪人生目标树｜唯一正式源码 V2.0.3
 
-**当前唯一源码基线：用户 2026-11-27 上传并确认已部署的 `wuxie-life-atlas-pages-v2.0.2.zip`。**
+**当前源码基线为 GitHub `main`。PRD 1.1 记录了 V2.0.3 第 29 次部署的布局与交互。** [部署记录](https://github.com/19375395549/wuxie-life-atlas/actions/runs/46024775556)
 
-本仓库的 **V2.0.3** 不是旧 V2.1 的再次打包：它是直接基于原 V2.0.2 全部 8 个部署文件进行的最小增量升级。原有目标/痛点卡片的增删查改、Notion 写入、消费预算和工资推演、PWA 图标与 Android 关联文件全部保留，并补充 Notion → 网页刷新逻辑。
+本仓库的 **V2.0.3** 从用户确认已部署的 V2.0.2 源码增量演进。原有目标/痛点卡片的增删查改、Notion 写入、消费预算和工资推演、PWA 图标与 Android 关联文件全部保留，并补充 Notion → 网页刷新逻辑。
 
 - `site/`：**唯一需要部署到 Cloudflare Pages 的目录**；`_worker.js` 是唯一提供 Notion API 和 Access 身份检查的服务端脚本。
 - `validate.mjs`：代码与安全配置静态检查，无任何生产 API 写入。
@@ -53,7 +53,7 @@ GitHub 仓库 → Settings → Secrets and variables → Actions → New reposit
 ## 生产发布前的三项核对
 
 - Cloudflare Pages 的 `wuxie-life-atlas` 原生产地址仍打开、Cloudflare Access 未失效。
-- 直接在 Notion 改一个测试目标的名称/预算，回网站点击 **↻ 从 Notion 刷新**，数据更新；随后在 Notion 改回原值。
+- 直接在 Notion 改一个测试目标的名称/预算，重新载入网站，数据更新；随后在 Notion 改回原值。
 - 网站卡片编辑、删除逻辑及工资推演仍存在，观察 Notion 数据完整且未意外新增/删除。
 
 ## 版本规则
@@ -66,7 +66,7 @@ GitHub 仓库 → Settings → Secrets and variables → Actions → New reposit
 
 ## 产品需求文档
 
-- [PRD V1.0（Markdown）](PRD.md) 用于日常编辑和 Git 差异审阅，包含已确认的多级分类编辑需求。
-- [PRD V1.0（Word）](PRD.docx) 保留收到的原始版本。
+- [PRD 1.1（Markdown）](PRD.md) 用于日常编辑和 Git 差异审阅。
+- [PRD 1.1（Word）](PRD.docx) 与 Markdown 内容同步，便于阅读和分享。
 
-PRD V1.0 记录的是编写时的状态，其中的生产版本和部署待办属于历史记录。后续发布新版 PRD 时，同步更新对应的 Word 版本和此处的链接。
+第 00 节记录第 29 次部署的页面布局、星图多级浏览、分类管理和痛点金字塔。
