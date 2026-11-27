@@ -8,6 +8,8 @@ const VERSION='2025-09-03';
 const GOAL_FIELDS={name:'目标名称',id:'编号',branch:'类别',parent:'上级编号',budget:'预算人民币',type:'预算类型',actual:'实际金额',priority:'优先级',note:'说明'};
 const PAIN_FIELDS={name:'痛点名称',id:'编号',tier:'层级',links:'关联目标编号',relation:'对应目标',note:'备注'};
 const TIER_NAMES={'L0':'P0 生存保障','L1':'P1 经济与职业安全','L2':'P2 健康与生活','L3':'P3 资源与跨境能力','L4':'P4 情感与关系','L5':'P5 发展与商业'};
+const PAIN_LEVELS=new Map([['P0','P0 刚需'],['P1','P1 软需'],['P2','P2 无需']]);
+const defaultPainParent=id=>id==='L0'?'P0':'P1';
 const CATEGORY_PREFIX='CAT:';
 const GOAL_ROOT='V1.8';
 const DEFAULT_GOALS=[
@@ -17,7 +19,10 @@ const DEFAULT_GOALS=[
   ['D','AI、办公软件及数字服务','G002']
 ];
 function defaultCategories(kind){
-  const entries=kind==='goals'?DEFAULT_GOALS:Object.entries(TIER_NAMES).map(([id,name])=>[id,name,'']);
+  const entries=kind==='goals'?DEFAULT_GOALS:[
+    ...[...PAIN_LEVELS].map(([id,name])=>[id,name,'']),
+    ...Object.entries(TIER_NAMES).map(([id,name])=>[id,name.slice(3),defaultPainParent(id)])
+  ];
   return entries.map(([id,name,parent],order)=>({id,name,parent,order}));
 }
 function categoriesFromPages(kind,pages){
@@ -28,11 +33,15 @@ function categoriesFromPages(kind,pages){
     const code=readPlain(properties[fields.id]);
     if(!code.startsWith(CATEGORY_PREFIX))continue;
     const id=code.slice(CATEGORY_PREFIX.length);
+    if(kind==='pains'&&PAIN_LEVELS.has(id))continue;
     if(!defaults.has(id)&&!/^n-[0-9a-f-]{36}$/.test(id))continue;
     try {
       const {parent,order,deleted}=JSON.parse(readPlain(properties[fields.note]));
       if(typeof parent!=='string'||!Number.isSafeInteger(order))continue;
-      defaults.set(id,{id,name:readPlain(properties[fields.name]),parent,order,deleted,pageId:page.id});
+      const savedName=readPlain(properties[fields.name]);
+      const name=kind==='pains'&&savedName===TIER_NAMES[id]?savedName.slice(3):savedName;
+      const displayParent=kind==='pains'&&parent===''?defaultPainParent(id):parent;
+      defaults.set(id,{id,name,parent:displayParent,order,deleted,pageId:page.id});
     } catch { /* Preserve the default when category metadata is malformed. */ }
   }
   const active=[...defaults.values()].filter(category=>!category.deleted);
@@ -45,7 +54,7 @@ function categoriesFromPages(kind,pages){
       seen.add(parent);
       parent=byId.get(parent).parent;
     }
-    return parent===root?category:{...category,parent:root};
+    return parent===root?category:{...category,parent:kind==='pains'?defaultPainParent(category.id):root};
   }).sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
 }
 function goalCategory(goal,categories){
@@ -75,12 +84,13 @@ async function saveCategory(env,kind,category){
 }
 async function changeCategory(env,kind,id,method,data,current){
   const categories=current.hierarchy[kind];
-  const root=kind==='goals'?GOAL_ROOT:'';
+  const root=kind==='goals'?GOAL_ROOT:'P1';
   if(method==='POST'){
-    const parent=requireCategory(kind,data.parent??root,categories,true);
+    const parent=requireCategory(kind,data.parent||root,categories,kind==='goals');
     await saveCategory(env,kind,{id:'n-'+crypto.randomUUID(),name:cleanName(data.name),parent,order:categories.length?Math.max(...categories.map(node=>node.order))+1:0});
     return;
   }
+  if(kind==='pains'&&PAIN_LEVELS.has(id))throw Object.assign(new Error('请编辑该需求下的分类'),{status:400});
   const category=categories.find(node=>node.id===id);
   if(!category)throw Object.assign(new Error('找不到指定分类'),{status:404});
   if(method==='DELETE'){
@@ -90,7 +100,7 @@ async function changeCategory(env,kind,id,method,data,current){
     await saveCategory(env,kind,{...category,deleted:true});
     return;
   }
-  const parent=requireCategory(kind,data.parent??category.parent,categories,true);
+  const parent=requireCategory(kind,data.parent??category.parent,categories,kind==='goals');
   const byId=new Map(categories.map(node=>[node.id,node]));
   for(let ancestor=parent;byId.has(ancestor);ancestor=byId.get(ancestor).parent){
     if(ancestor===id)throw Object.assign(new Error('分类不能移到自身或自己的下级'),{status:400});
@@ -182,7 +192,7 @@ async function state(env){
   const byId=Object.fromEntries(goals.map(g=>[g.pageId,g.id]));
   const pains=painPages.map(p=>asPain(p,byId)).filter(p=>/^P\d{3,}$/.test(p.id)).map(pain=>{
     const category=pain.tier.startsWith(CATEGORY_PREFIX)?pain.tier.slice(CATEGORY_PREFIX.length):pain.tier;
-    return {...pain,category:hierarchy.pains.some(node=>node.id===category)?category:''};
+    return {...pain,category:hierarchy.pains.some(node=>node.id===category)?category:'P1'};
   });
   return {ok:true,version:'V2.0.3',goals,pains,hierarchy,goalRoot,summary:{goalCount:goals.length,painCount:pains.length,consumption:goals.filter(x=>x.branch==='G002').reduce((a,x)=>a+(x.budget||0),0),investment:goals.filter(x=>x.branch==='G003').reduce((a,x)=>a+(x.budget||0),0)}};
 }
