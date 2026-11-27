@@ -78,10 +78,11 @@ async function queryAll(env,id){
   }while(start_cursor);
   return results;
 }
-function asGoal(page){const p=page.properties||{};return {id:readPlain(p[GOAL_FIELDS.id]),pageId:page.id,name:readPlain(p[GOAL_FIELDS.name]),parent:readPlain(p[GOAL_FIELDS.parent]),branch:readSelect(p[GOAL_FIELDS.branch]),budget:numberOrNull(p[GOAL_FIELDS.budget]?.number),type:readSelect(p[GOAL_FIELDS.type]),actual:numberOrNull(p[GOAL_FIELDS.actual]?.number),priority:readSelect(p[GOAL_FIELDS.priority])||'待确认',note:readPlain(p[GOAL_FIELDS.note])};}
+const GOAL_CODE = /^G00[123]-\d{2,}$/;
+function asGoal(page){const p=page.properties||{};return {id:readPlain(p[GOAL_FIELDS.id]).trim() || page.id,pageId:page.id,name:readPlain(p[GOAL_FIELDS.name]),parent:readPlain(p[GOAL_FIELDS.parent]),branch:readSelect(p[GOAL_FIELDS.branch]),budget:numberOrNull(p[GOAL_FIELDS.budget]?.number),type:readSelect(p[GOAL_FIELDS.type]),actual:numberOrNull(p[GOAL_FIELDS.actual]?.number),priority:readSelect(p[GOAL_FIELDS.priority])||'待确认',note:readPlain(p[GOAL_FIELDS.note])};}
 function asPain(page,idByPage){const p=page.properties||{};const relation=p[PAIN_FIELDS.relation];const related=(relation?.relation||[]).map(x=>idByPage[x.id]).filter(Boolean);const listed=readPlain(p[PAIN_FIELDS.links]).split(/[，,\s]+/).filter(x=>/^G00[123]-\d{2,}$/.test(x));const tierName=readSelect(p[PAIN_FIELDS.tier]);const tier=Object.keys(TIER_NAMES).find(x=>TIER_NAMES[x]===tierName)||'L3';return {id:readPlain(p[PAIN_FIELDS.id]),pageId:page.id,name:readPlain(p[PAIN_FIELDS.name]),tier,note:readPlain(p[PAIN_FIELDS.note]),links:[...new Set(Array.isArray(relation?.relation)?related:listed)]};}
-async function state(env){const [goalPages,painPages]=await Promise.all([queryAll(env,env.NOTION_GOALS_SOURCE_ID),queryAll(env,env.NOTION_PAINS_SOURCE_ID)]);const goals=goalPages.map(asGoal).filter(g=>/^G00[123]-\d{2,}$/.test(g.id));const byId=Object.fromEntries(goals.map(g=>[g.pageId,g.id]));const pains=painPages.map(p=>asPain(p,byId)).filter(p=>/^P\d{3,}$/.test(p.id));return {ok:true,version:'V2.0.3',goals,pains,summary:{goalCount:goals.length,painCount:pains.length,consumption:goals.filter(x=>x.branch==='G002').reduce((a,x)=>a+(x.budget||0),0),investment:goals.filter(x=>x.branch==='G003').reduce((a,x)=>a+(x.budget||0),0)}};}
-function nextGoalCode(branch,arr){const n=arr.filter(x=>x.branch===branch).reduce((max,x)=>Math.max(max,Number(x.id.split('-').at(-1))||0),0)+1;return branch+'-'+String(n).padStart(2,'0');}
+async function state(env){const [goalPages,painPages]=await Promise.all([queryAll(env,env.NOTION_GOALS_SOURCE_ID),queryAll(env,env.NOTION_PAINS_SOURCE_ID)]);const goals=goalPages.map(asGoal).filter(g=>GOAL_CODE.test(g.id)||(g.id===g.pageId&&g.name.trim()));const byId=Object.fromEntries(goals.map(g=>[g.pageId,g.id]));const pains=painPages.map(p=>asPain(p,byId)).filter(p=>/^P\d{3,}$/.test(p.id));return {ok:true,version:'V2.0.3',goals,pains,summary:{goalCount:goals.length,painCount:pains.length,consumption:goals.filter(x=>x.branch==='G002').reduce((a,x)=>a+(x.budget||0),0),investment:goals.filter(x=>x.branch==='G003').reduce((a,x)=>a+(x.budget||0),0)}};}
+function nextGoalCode(branch,arr){const n=arr.filter(x=>x.branch===branch&&GOAL_CODE.test(x.id)).reduce((max,x)=>Math.max(max,Number(x.id.split('-').at(-1))||0),0)+1;return branch+'-'+String(n).padStart(2,'0');}
 function nextPainCode(arr){const n=arr.reduce((max,x)=>Math.max(max,Number(x.id.slice(1))||0),0)+1;return 'P'+String(n).padStart(3,'0');}
 async function bodyJson(request,max=8000){
   if(!request.headers.get('content-type')?.toLowerCase().includes('application/json'))throw Object.assign(new Error('仅支持 JSON 登记请求'),{status:415});
@@ -128,7 +129,7 @@ async function patchGoal(env,id,data,existing){
 function buildPainProps({id,name,tier,links,note},goals){
   const mapped=links.map(x=>goals.find(g=>g.id===x)).filter(Boolean);
   if(mapped.length!==links.length)throw Object.assign(new Error('存在无效的关联目标编号'),{status:400});
-  return {"痛点名称":titleValue(name),"编号":textValue(id),"层级":selectValue(TIER_NAMES[tier]),"关联目标编号":textValue(links.join(', ')),"对应目标":{relation:mapped.map(g=>({id:g.pageId}))},"备注":textValue(note)};
+  return {"痛点名称":titleValue(name),"编号":textValue(id),"层级":selectValue(TIER_NAMES[tier]),"关联目标编号":textValue(links.filter(link=>GOAL_CODE.test(link)).join(', ')),"对应目标":{relation:mapped.map(g=>({id:g.pageId}))},"备注":textValue(note)};
 }
 async function createPain(env,data,existingPains,goals){
   const tier=data.tier,name=cleanName(data.name),note=cleanNote(data.note);
@@ -181,7 +182,7 @@ async function api(request,env,url){
       const pain=await createPain(env,data,current.pains,current.goals);
       return json({ok:true,pain},201);
     }
-    const goalMatch=path.match(/^\/api\/goals\/(G00[123]-\d{2,})$/);
+    const goalMatch=path.match(/^\/api\/goals\/(G00[123]-\d{2,}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/);
     if(method==='PATCH'&&goalMatch){const data=await bodyJson(request),current=await state(env);return json({ok:true,goal:await patchGoal(env,goalMatch[1],data,current.goals)});}
     const painMatch=path.match(/^\/api\/pains\/(P\d{3,})$/);
     if(method==='PATCH'&&painMatch){const data=await bodyJson(request),current=await state(env);return json({ok:true,pain:await patchPain(env,painMatch[1],data,current.pains,current.goals)});}

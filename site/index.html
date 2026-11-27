@@ -82,7 +82,7 @@ function route(id){selected=nodes.get(id);focus=selected.children.length?selecte
 function button(name,handler){const newButton=document.createElement('button');newButton.textContent=name;newButton.onclick=handler;return newButton}
 function detail(){const n=selected, actual=records[n.id],crumb=[];let ancestor=n;while(ancestor){crumb.unshift(ancestor.name);ancestor=nodes.get(ancestor.parent)}const side=el('detail');side.innerHTML=`<small class="eyebrow">NODE INSPECTOR　/　${n.id}</small><h2>${esc(n.name)}</h2><small class="dim">${esc(crumb.join(' › '))}</small><p>${esc(n.note)}</p>`;if(n.budget!=null)side.innerHTML+=`<label>${n.id==='A'?'含备用金的保障目标':n.id.startsWith('G002')||['B','C','D'].includes(n.id)?'60 年消费预算':n.id.startsWith('M')?'现金阶段门槛':'目标金额'}</label><div class="amount">${money(n.budget)}</div>`;if(n.measure){const comparison=actual===undefined?'尚无实际记录':n.budget===0?(actual===0?'已记录零支出':'已发生套餐外支出'):n.id.startsWith('G002')?'预算使用率 '+(actual/n.budget*100).toFixed(1)+'%（不是完成率）':'目标达成比例 '+(actual/n.budget*100).toFixed(2)+'%';side.innerHTML+=`<p>${comparison}</p><form id="entry"><label>${n.measure}（元）<input id="actual" type="number" min="0" max="90071992547409" step="0.01" required placeholder="待确认" value="${actual??''}"></label><button class="primary">保存实际值</button> <button type="button" id="unset" ${actual===undefined?'disabled':''}>撤回为待确认</button></form>`;el('entry').onsubmit=event=>{event.preventDefault();const value=el('actual').valueAsNumber;if(valid(n.id,value)){records[n.id]=value;save()}};el('unset').onclick=()=>{delete records[n.id];save()}}
 if(n.id.startsWith('M')){const balance=records['G001-01'];side.insertAdjacentHTML('beforeend',`<p>实际状态：${balance===undefined?'待确认':balance>=n.budget?'已达门槛':'未达门槛'}</p>`)}if(n.children.length){side.insertAdjacentHTML('beforeend',`<h3>下一级 <small> / ${n.children.length}</small></h3><div id="children"></div>`);n.children.forEach(child=>el('children').append(button(child.id+'　'+child.name+'　›',()=>route(child.id))))}el('back').disabled=!n.parent}
-function register(){const query=el('q').value.trim().toLowerCase();const matches=goals.filter(n=>n.id.startsWith(el('filter').value)&&(n.id+n.name).toLowerCase().includes(query));el('matches').textContent=matches.length+' 项';el('register').replaceChildren(...matches.map(n=>{const item=button('',()=>{route(n.id);openRecordEditor('goals',n.id)});item.className='item';item.innerHTML=`<span><code>${n.id}</code><br>${esc(n.name)}</span><small>${records[n.id]===undefined?'待确认':money(records[n.id])}</small>`;return item}));if(!matches.length)el('register').textContent='没有匹配的目标。'}
+function register(){const query=el('q').value.trim().toLowerCase();const matches=goals.filter(n=>(!el('filter').value||(n.branch??n.id.slice(0,4))===el('filter').value)&&(n.id+n.name).toLowerCase().includes(query));el('matches').textContent=matches.length+' 项';el('register').replaceChildren(...matches.map(n=>{const item=button('',()=>{route(n.id);openRecordEditor('goals',n.id)});item.className='item';item.innerHTML=`<span><code>${n.id.length===36?'未编号':n.id}</code><br>${esc(n.name)}</span><small>${records[n.id]===undefined?'待确认':money(records[n.id])}</small>`;return item}));if(!matches.length)el('register').textContent='没有匹配的目标。'}
 function refresh(){el('count').textContent=Object.keys(records).length+' / '+goals.length;detail();register();draw()}
 function simulate(){const salary=el('salary').valueAsNumber;el('scenario').textContent=Number.isFinite(salary)&&salary>=0?`每月仅扣消费后：${money(salary-8168716/720)}　｜　60 年扣除消费及投资本金后：${money(salary*720-8198716)}　｜　再预留温饱备用金后：${money(salary*720-8361716)}`:'请输入非负月薪。'}el('salary').oninput=simulate;simulate();el('filter').onchange=register;el('q').oninput=register;el('home').onclick=()=>route(root.id);el('back').onclick=()=>selected.parent&&route(selected.parent);
 el('exporter').onclick=()=>{const anchor=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({version:'V1.7',records},null,2)],{type:'application/json'}));anchor.href=url;anchor.download='无邪目标树-V1.7-实际记录.json';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),2000)};el('importer').onclick=()=>el('file').click();el('file').onchange=async()=>{try{const file=el('file').files[0];if(!file)return;if(file.size>100000)throw Error();const data=JSON.parse(await file.text());if(data.version!=='V1.7'||!data.records||typeof data.records!=='object'||Array.isArray(data.records)||Object.entries(data.records).some(([id,val])=>!valid(id,val)))throw Error();if(Object.keys(data.records).some(id=>id in records&&records[id]!==data.records[id])&&!confirm('备份含不同的实际值，要覆盖这些同编号记录吗？'))return;Object.assign(records,data.records);save()}catch{el('msg').textContent='无法读取备份：请使用 V1.7 导出的有效记录。'}finally{el('file').value=''}};
@@ -262,11 +262,11 @@ async function loadCloud(){
    const index=goals.indexOf(goal);if(index>=0)goals.splice(index,1);
  }
  for(const r of data.goals){
-   const parentId=coreParentById.get(r.id)||r.branch;
+   const parentId=coreParentById.get(r.id)||(nodes.has(r.branch)?r.branch:root.id);
    if(!nodes.has(r.id)){
-     add(r.id,r.name,nodes.has(parentId)?parentId:r.branch,r.budget,r.note,r.branch==='G002'?'累计实际支出':r.branch==='G003'?'实际投入本金':'实际达成金额');
+     add(r.id,r.name,nodes.has(parentId)?parentId:root.id,r.budget,r.note,r.branch==='G002'?'累计实际支出':r.branch==='G003'?'实际投入本金':'实际达成金额');
    }
-   const node=nodes.get(r.id);node.name=r.name;node.budget=r.budget;node.note=r.note;
+   const node=nodes.get(r.id);node.name=r.name;node.branch=r.branch||r.id.slice(0,4);node.budget=r.budget;node.note=r.note;
    if(node.parent!==parentId&&nodes.has(parentId)){
      const previous=nodes.get(node.parent);
      if(previous)previous.children=previous.children.filter(c=>c!==node);
@@ -280,7 +280,7 @@ async function loadCloud(){
  // 汇总完全使用 Notion 返回值，不使用 HTML 中的旧静态预算。
  allBudget=()=>cloudSnapshot.summary.consumption;
  allInvestment=()=>cloudSnapshot.summary.investment;
- customGoals=data.goals.filter(g=>!coreGoalId(g.id)).map(g=>({id:g.id,name:g.name,parent:g.branch,budget:g.budget,note:g.note}));
+ customGoals=data.goals.filter(g=>g.id!==g.pageId&&!coreGoalId(g.id)).map(g=>({id:g.id,name:g.name,parent:g.branch,budget:g.budget,note:g.note}));
  for(const k of Object.keys(records))delete records[k];
  for(const r of data.goals)if(typeof r.actual==='number')records[r.id]=r.actual;
  painDefs.splice(0,painDefs.length,...data.pains.filter(p=>Number(p.id.slice(1))<=20).map(p=>({...p,goals:p.links||[]})));
@@ -318,7 +318,7 @@ async function withCloudSave(action,feedback){
 // 覆盖原本 localStorage 的“保存实际值”，不再假装存储成功。
 save=async function(){
  const id=selected.id;
- if(!/^G00[123]-\d{2,}$/.test(id))return;
+ if(!cloudSnapshot?.goals.some(goal=>goal.id===id))return;
  const value=Object.prototype.hasOwnProperty.call(records,id)?records[id]:null;
  await withCloudSave(async()=>{await cloudApi('/api/goals/'+encodeURIComponent(id),'PATCH',{actual:value});return id+' 的实际金额已保存到 Notion。'},null);
 };
@@ -418,7 +418,7 @@ function openRecordEditor(kind,id){
  const isGoal=kind==='goals';
  const form=el('record-form'),fields=el('record-fields'),feedback=el('record-feedback');
  fields.replaceChildren();
- el('record-title').textContent=id+' · '+item.name;
+ el('record-title').textContent=isGoal&&id===item.pageId?item.name:id+' · '+item.name;
  feedback.textContent='';
  function field(label,control,value){
    const wrapper=document.createElement('label');
