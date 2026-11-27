@@ -55,7 +55,7 @@ function startGoalAtlas() {
   if (typeof saved.low==='boolean') options.low=saved.low;
   for (const key of ['zoom','bubbleZoom']) if (typeof saved[key]==='number'&&saved[key]>=0.65&&saved[key]<=4) options[key]=saved[key];
   if (Number.isFinite(saved.angle)) options.angle=saved.angle%(2*Math.PI);
-  let selection = selected.id, trail=[root.id], page=0, recordsById, graph, maxAmount, visibleRows, orbitRows=[], hits=[];
+  let selection = selected.id, trail=[root.id], page=0, recordsById, graph, maxAmount, visibleRows, orbitRows=[], orbitBranches=[], orbitLinks=[], hits=[];
   let frame=0, lastTime=null, visible=false, playing=!media.matches, hovered=null, transition=0;
   let toolbarHover=false, focusTarget=null, pan={x:0,y:0}, pointers=new Map(), pinchDistance=0, dragged=false;
 
@@ -114,11 +114,47 @@ function startGoalAtlas() {
     visibleRows=[...recordsById.values()].filter(matches);
     maxAmount=Math.max(0,...[...recordsById.values()].map(row=>row[amountMode.value]??0));
     const included=new Set(visibleRows.map(row=>row.id));
-    orbitRows=[...recordsById.values()].sort((a,b)=>a.id.localeCompare(b.id)).map(row=>({
-      row,visible:included.has(row.id),
-      unit:AtlasGeometry.radius(row[amountMode.value],maxAmount,options.scale,0,1),
-      distance:AtlasGeometry.distanceRatio(row[amountMode.value],maxAmount)
+    const topChildren=graphChildren(root.id);
+    const branchIds=topChildren.filter(id=>!recordsById.has(id));
+    const lanes=new Map(branchIds.map((id,index)=>[id,index]));
+    const fullRows=[...recordsById.values()].sort((a,b)=>a.id.localeCompare(b.id));
+    const grouped=new Map();
+    function topBranch(row){
+      let id=row.category;
+      const visited=new Set();
+      while(id&&id!==root.id&&!visited.has(id)){
+        if(lanes.has(id))return id;
+        visited.add(id);
+        id=nodes.get(id)?.parent;
+      }
+      return lanes.has(row.branch)?row.branch:root.id;
+    }
+    for(const row of fullRows){
+      const branch=topBranch(row);
+      if(!grouped.has(branch))grouped.set(branch,[]);
+      grouped.get(branch).push(row);
+    }
+    const laneCount=Math.max(1,branchIds.length+Number(grouped.has(root.id)));
+    const turn=2*Math.PI/laneCount;
+    orbitBranches=branchIds.map((id,index)=>({id,angle:-Math.PI/2+index*turn}));
+    orbitRows=[...grouped].flatMap(([branch,rows])=>rows.map((row,index)=>{
+      const lane=lanes.get(branch)??branchIds.length;
+      const fraction=((index+1)*0.61803398875)%1;
+      return {
+        row,branch,visible:included.has(row.id),
+        angle:-Math.PI/2+(lane+(fraction-.5)*0.94)*turn,
+        unit:AtlasGeometry.radius(row[amountMode.value],maxAmount,options.scale,0,1),
+        distance:AtlasGeometry.distanceRatio(row[amountMode.value],maxAmount)
+      };
     }));
+    const displayed=new Set([root.id,...branchIds,...visibleRows.map(row=>row.id)]);
+    orbitLinks=orbitBranches.map(branch=>[root.id,branch.id]);
+    for(const item of orbitRows.filter(item=>item.visible)){
+      const {row,branch}=item;
+      const main=displayed.has(row.category)&&row.category!==row.id?row.category:branch;
+      orbitLinks.push([main,row.id]);
+      for(const parent of row.parentIds||[])if(parent!==main&&displayed.has(parent))orbitLinks.push([parent,row.id]);
+    }
     if(!nodes.has(selection))selection=root.id;
     normalizeTrail();
     updateControls();
@@ -150,7 +186,7 @@ function startGoalAtlas() {
     el('atlas-prev').disabled=page===0;el('atlas-next').disabled=page>=totalPages-1;
     el('back').disabled=trail.length===1;
     el('atlas-crumb').replaceChildren(...trail.map((id,index)=>button(nodes.get(id)?.name||id,()=>navigate(trail.slice(0,index+1)))));
-    const visibleIds=isNebula()?[root.id,...visibleRows.map(row=>row.id)]:[trail.at(-1),...children.slice(page*3,page*3+3)];
+    const visibleIds=isNebula()?[root.id,...orbitBranches.map(branch=>branch.id),...visibleRows.map(row=>row.id)]:[trail.at(-1),...children.slice(page*3,page*3+3)];
     accessible.replaceChildren(new Option('选择节点',''),...visibleIds.map(id=>new Option(nodes.get(id)?.name||id,id)));
     accessible.value=visibleIds.includes(selection)?selection:'';
     const hiddenSelection=isNebula()&&recordsById.has(selection)&&!visibleIds.includes(selection);
@@ -205,24 +241,27 @@ function startGoalAtlas() {
     if(!found){el('atlas-status').textContent='未找到目标';return;}
     if(!isNebula())selection=null;
     route(found.id);
-    if(isNebula())focusTarget=found.id;
+    if(isNebula()){focusTarget=found.id;redraw();}
     const hidden=recordsById.has(found.id)&&!matches(recordsById.get(found.id));
     if(hidden)el('atlas-status').textContent='已选目标被筛选隐藏，可在详情中解除筛选。';
   }
   function orbitalPositions(width,height) {
     const size=Math.min(width,height),zoom=options.zoom;
-    const maxRadius=Math.max(7,Math.min(23,size/Math.max(16,Math.sqrt(orbitRows.length)*4)))*zoom;
+    const maxRadius=Math.max(6,Math.min(20,size/Math.max(17,Math.sqrt(orbitRows.length)*4.4)))*zoom;
     const centerX=width/2+pan.x,centerY=height/2+pan.y;
-    const marks=[];
-    for(const [index,{row,visible,unit,distance}] of orbitRows.entries()){
-      if(!visible)continue;
-      const angle=options.angle+index*Math.PI*(3-Math.sqrt(5));
-      const offset=distance*size*0.43*zoom;
-      const x=centerX+Math.cos(angle)*offset,y=centerY+Math.sin(angle)*offset;
+    const polar=(angle,distance)=>({
+      x:centerX+Math.cos(angle+options.angle)*size*distance*zoom,
+      y:centerY+Math.sin(angle+options.angle)*size*distance*zoom
+    });
+    const marks=orbitRows.filter(item=>item.visible).map(({row,angle,unit,distance})=>{
       const minimum=Math.min(maxRadius,4*zoom);
       const radius=options.scale==='area'?Math.max(minimum,maxRadius*unit):minimum+(maxRadius-minimum)*unit;
-      marks.push({id:row.id,x,y,r:radius,depth:Math.sin(angle),row});
+      return {id:row.id,...polar(angle,distance*0.43),r:radius,row};
+    });
+    for(const branch of orbitBranches){
+      marks.push({id:branch.id,...polar(branch.angle,0.23),r:Math.min(13,9*zoom),branch:true});
     }
+    marks.push({id:root.id,x:centerX,y:centerY,r:15});
     return marks;
   }
   function bubblePositions(width,height,time) {
@@ -278,10 +317,16 @@ function startGoalAtlas() {
       }else focusTarget=null;
     }
     if(isNebula()){
-      marks.sort((a,b)=>a.depth-b.depth);
-      marks.push({id:root.id,x:width/2+pan.x,y:height/2+pan.y,r:14});
-    }
-    else for(const mark of marks.slice(1)){
+      const byId=new Map(marks.map(mark=>[mark.id,mark]));
+      for(const [parent,id] of orbitLinks){
+        const a=byId.get(parent),b=byId.get(id);
+        if(!a||!b)continue;
+        const branch=nodes.get(parent)?.branch||parent;
+        const line=colors[b.row?.branch]||colors[branch]||'#70bfd2';
+        ctx.strokeStyle=line+(id===selection||parent===selection&&parent!==root.id?'8a':'35');
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      }
+    }else for(const mark of marks.slice(1)){
       ctx.beginPath();ctx.moveTo(marks[0].x,marks[0].y);ctx.lineTo(mark.x,mark.y);ctx.strokeStyle='#61a2b17b';ctx.stroke();
     }
     const boxes=[];
@@ -290,7 +335,7 @@ function startGoalAtlas() {
     for(const mark of marks){
       const {x,y,r,row,id}=mark;
       if(x+r<0||x-r>width||y+r<0||y-r>height)continue;
-      const color=row?.level==='P2'?'#8998aa':colors[row?.branch]||'#73c7dc';
+      const color=row?.level==='P2'?'#8998aa':colors[row?.branch||id]||'#73c7dc';
       if(!options.low){
         const glow=ctx.createRadialGradient(x,y,0,x,y,r*2.2);
         glow.addColorStop(0,color+(row?.level.startsWith('P0')?'a0':'52'));glow.addColorStop(1,color+'00');
@@ -303,6 +348,10 @@ function startGoalAtlas() {
         ctx.beginPath();ctx.arc(x,y,r+4,-Math.PI/2,-Math.PI/2+Math.PI*2*row.progress);
         ctx.strokeStyle='#a8ffe0';ctx.stroke();
       }
+      if(id===root.id&&isNebula()){
+        ctx.beginPath();ctx.ellipse(x,y,r*1.65,r*0.56,-0.4,0,Math.PI*2);
+        ctx.strokeStyle='#9edddb9c';ctx.stroke();
+      }
       if(selection===id||hovered===id){circle(x,y,r+6);ctx.strokeStyle='#c9fcff';ctx.stroke();}
       hits.push({...mark,r:Math.max(10,r+3)});
     }
@@ -310,6 +359,7 @@ function startGoalAtlas() {
     for(const mark of labels){
       if(mark.x<0||mark.x>width||mark.y<0||mark.y>height)continue;
       const forced=mark.id===selection||mark.id===hovered;
+      if(isNebula()&&!forced&&!mark.branch&&mark.id!==root.id)continue;
       const name=nodes.get(mark.id)?.name||mark.id;
       const caption=(mark.row?.resolved?'✓ ':'')+(name.length>14?name.slice(0,14)+'…':name);
       const value=mark.row?budgetText(mark.row[amountMode.value]):('amount' in mark?(nodes.get(mark.id)?.categoryNode&&AtlasGeometry.known(mark.amount)?'分类口径 · ':'')+budgetText(mark.amount):'');
