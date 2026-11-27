@@ -5,7 +5,7 @@
 本仓库的 **V2.0.3** 不是旧 V2.1 的再次打包：它是直接基于原 V2.0.2 全部 8 个部署文件进行的最小增量升级。原有目标/痛点卡片的增删查改、Notion 写入、消费预算和工资推演、PWA 图标与 Android 关联文件全部保留，并补充 Notion → 网页刷新逻辑。
 
 - `site/`：**唯一需要部署到 Cloudflare Pages 的目录**；`_worker.js` 是唯一提供 Notion API 和 Access 身份检查的服务端脚本。
-- `scripts/validate.mjs`：代码与安全配置静态检查，无任何生产 API 写入。
+- `validate.mjs`：代码与安全配置静态检查，无任何生产 API 写入。
 - `.github/workflows/deploy-pages.yml`：推送到 `main` 自动检查并用 Wrangler 上传 `site/` 到**既有的** `wuxie-life-atlas` Pages 项目；Pull Request 仅检查不部署。
 
 ## 必须遵守的原则
@@ -14,11 +14,23 @@
 2. **不要将 `NOTION_TOKEN`、Cloudflare Access 配置密钥或其他私钥写入仓库。** 旧的 Cloudflare Pages 项目环境变量应继续使用原值，无须更改数据库 ID。
 3. GitHub 仓库公开可读，推送权限仅授予所有者及受其授权的集成，不要上传旧版本包。
 4. GitHub Actions 部署后仍需登录 Cloudflare Access，人工核对目标预算、卡片增删改和反向同步。部署不会自动在 Notion 修改任何业务数据。
-5. V2.0.2 当前生产网站**在首次自动部署验收前不得删除**，以便必要时在 Cloudflare 中回滚生产部署。
+5. 保留 Cloudflare 历史部署记录，以便必要时回滚；生产状态以 Cloudflare 与 GitHub Actions 记录为准。
 
-## 第一步：建立 GitHub Private 仓库
+## 第一步：使用现有 GitHub 仓库
 
-新建 `wuxie-life-atlas`（Private），将本压缩包内的仓库目录**全部内容**提交到其 `main` 分支。仓库根目录应有 `.github/`、`site/`、`scripts/`、`README.md`。不要把外层文件夹本身当作仓库内容上传。
+继续使用 `wuxie-life-atlas` 的 `main` 分支，不重新建仓。当前仓库公开可读；如需保护私人需求文档和代码，应由所有者决定是否改为 Private。
+
+仓库根目录采用半扁平化结构：
+
+- `README.md`：项目与部署说明。
+- `PRD.md` / `PRD.docx`：同一需求文档的两种格式。
+- `validate.mjs`：运行 `node validate.mjs` 进行静态检查。
+- `RELEASE-MANIFEST.json`：原始交付版本记录（不是实时部署状态）。
+- `.gitignore`：Git 忽略规则。
+- `site/`：唯一部署目录，前端 `site/index.html`、后端 `site/_worker.js` 及其他网站资源。
+- `.github/workflows/`：GitHub Actions 固定目录。
+
+只发布 `site/`，不要把根目录的需求文档或验证脚本一起发布。
 
 ## 第二步：配置 GitHub Actions 机密
 
@@ -54,7 +66,7 @@ GitHub 仓库 → Settings → Secrets and variables → Actions → New reposit
 
 ## 产品需求文档
 
-- [PRD V1.0（Markdown）](docs/无邪人生目标树-产品需求文档-PRD-V1.0.md) 用于日常编辑和 Git 差异审阅。
-- [PRD V1.0（Word）](docs/无邪人生目标树-产品需求文档-PRD-V1.0.docx) 保留收到的原始版本。
+- [PRD V1.0（Markdown）](PRD.md) 用于日常编辑和 Git 差异审阅。
+- [PRD V1.0（Word）](PRD.docx) 保留收到的原始版本。
 
 PRD V1.0 记录的是编写时的状态，其中的生产版本和部署待办属于历史记录。后续发布新版 PRD 时，同步更新对应的 Word 版本和此处的链接。
