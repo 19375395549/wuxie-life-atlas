@@ -174,6 +174,8 @@ function asGoal(page){const p=page.properties||{};return {id:readPlain(p[GOAL_FI
 function asPain(page,idByPage){const p=page.properties||{};const relation=p[PAIN_FIELDS.relation];const related=(relation?.relation||[]).map(x=>idByPage[x.id]).filter(Boolean);const listed=readPlain(p[PAIN_FIELDS.links]).split(/[，,\s]+/).filter(x=>/^G00[123]-\d{2,}$/.test(x));const tierName=readSelect(p[PAIN_FIELDS.tier]);const tier=Object.keys(TIER_NAMES).find(x=>TIER_NAMES[x]===tierName)||(tierName.startsWith(CATEGORY_PREFIX)?tierName:'L3');return {id:readPlain(p[PAIN_FIELDS.id]),pageId:page.id,name:readPlain(p[PAIN_FIELDS.name]),tier,note:readPlain(p[PAIN_FIELDS.note]),links:[...new Set(Array.isArray(relation?.relation)?related:listed)]};}
 async function state(env){
   const [goalPages,painPages]=await Promise.all([queryAll(env,env.NOTION_GOALS_SOURCE_ID),queryAll(env,env.NOTION_PAINS_SOURCE_ID)]);
+  const rootPage=goalPages.find(page=>readPlain(page.properties?.[GOAL_FIELDS.id])===CATEGORY_PREFIX+GOAL_ROOT);
+  const goalRoot={id:GOAL_ROOT,name:readPlain(rootPage?.properties?.[GOAL_FIELDS.name]).trim()||'无邪人生目标树',pageId:rootPage?.id};
   const hierarchy={goals:categoriesFromPages('goals',goalPages),pains:categoriesFromPages('pains',painPages)};
   const goals=goalPages.map(asGoal).filter(g=>GOAL_CODE.test(g.id)||(g.id===g.pageId&&g.name.trim()))
     .map(goal=>({...goal,category:goalCategory(goal,hierarchy.goals)}));
@@ -182,7 +184,7 @@ async function state(env){
     const category=pain.tier.startsWith(CATEGORY_PREFIX)?pain.tier.slice(CATEGORY_PREFIX.length):pain.tier;
     return {...pain,category:hierarchy.pains.some(node=>node.id===category)?category:''};
   });
-  return {ok:true,version:'V2.0.3',goals,pains,hierarchy,summary:{goalCount:goals.length,painCount:pains.length,consumption:goals.filter(x=>x.branch==='G002').reduce((a,x)=>a+(x.budget||0),0),investment:goals.filter(x=>x.branch==='G003').reduce((a,x)=>a+(x.budget||0),0)}};
+  return {ok:true,version:'V2.0.3',goals,pains,hierarchy,goalRoot,summary:{goalCount:goals.length,painCount:pains.length,consumption:goals.filter(x=>x.branch==='G002').reduce((a,x)=>a+(x.budget||0),0),investment:goals.filter(x=>x.branch==='G003').reduce((a,x)=>a+(x.budget||0),0)}};
 }
 function nextGoalCode(branch,arr){const n=arr.filter(x=>x.branch===branch&&GOAL_CODE.test(x.id)).reduce((max,x)=>Math.max(max,Number(x.id.split('-').at(-1))||0),0)+1;return branch+'-'+String(n).padStart(2,'0');}
 function nextPainCode(arr){const n=arr.reduce((max,x)=>Math.max(max,Number(x.id.slice(1))||0),0)+1;return 'P'+String(n).padStart(3,'0');}
@@ -281,6 +283,13 @@ async function api(request,env,url){
       const count=(pages,field)=>pages.filter(page=>!readPlain(page.properties?.[field]).startsWith(CATEGORY_PREFIX)).length;
       return json({ok:true,goalCount:count(g,GOAL_FIELDS.id),painCount:count(p,PAIN_FIELDS.id),storage:'notion',verified:true});
     }
+    if(method==='PATCH'&&path==='/api/categories/goals/root'){
+      const data=await bodyJson(request);
+      const name=cleanName(data.name);
+      const {goalRoot}=await state(env);
+      await saveCategory(env,'goals',{...goalRoot,name,parent:'',order:0});
+      return json({ok:true});
+    }
     const categoryMatch=path.match(/^\/api\/categories\/(goals|pains)(?:\/([A-Za-z0-9-]+))?$/);
     if(categoryMatch){
       const [,kind,id]=categoryMatch;
@@ -336,9 +345,9 @@ export default {
         return withHeaders(await env.ASSETS.fetch(new Request(new URL('/',url),request)));
       }
       try {
-        const {goals,pains,hierarchy,...snapshot}=await state(env);
+        const {goals,pains,hierarchy,goalRoot,...snapshot}=await state(env);
         const withoutPageId=({pageId,...record})=>record;
-        const response=json({...snapshot,hierarchy:{goals:hierarchy.goals.map(withoutPageId),pains:hierarchy.pains.map(withoutPageId)},goals:goals.map(withoutPageId),pains:pains.map(withoutPageId)});
+        const response=json({...snapshot,goalRoot:withoutPageId(goalRoot),hierarchy:{goals:hierarchy.goals.map(withoutPageId),pains:hierarchy.pains.map(withoutPageId)},goals:goals.map(withoutPageId),pains:pains.map(withoutPageId)});
         return withHeaders(request.method==='HEAD'?new Response(null,{headers:response.headers}):response);
       } catch {
         return withHeaders(fail('暂时无法读取目标数据，请稍后再试',503));
