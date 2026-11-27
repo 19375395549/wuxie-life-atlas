@@ -12,6 +12,31 @@ const AtlasGeometry = (() => {
     if(!known(amount))return 1.06;
     return 1-0.76*(max>0?Math.log1p(amount)/Math.log1p(max):0);
   }
+  function spreadAngles(items,anchors){
+    const occupied=anchors.map(({angle,distance})=>[Math.cos(angle)*distance,Math.sin(angle)*distance]);
+    const placed=new Map();
+    const ordered=[...items].sort((a,b)=>a.distance-b.distance||a.id.localeCompare(b.id));
+    for(const item of ordered){
+      let bestAngle=item.angle,bestScore=-Infinity;
+      const steps=Math.min(72,Math.max(24,items.length*2));
+      for(let index=0;index<steps;index++){
+        const offset=index*2*Math.PI/steps;
+        const angle=item.angle+offset;
+        const x=Math.cos(angle)*item.distance,y=Math.sin(angle)*item.distance;
+        let nearestSquared=0.16;
+        for(const [px,py] of occupied){
+          const dx=px-x,dy=py-y;
+          nearestSquared=Math.min(nearestSquared,dx*dx+dy*dy);
+        }
+        const affinity=(1-Math.cos(offset))*0.085;
+        const score=Math.sqrt(nearestSquared)-affinity;
+        if(score>bestScore){bestScore=score;bestAngle=angle;}
+      }
+      placed.set(item.id,bestAngle);
+      occupied.push([Math.cos(bestAngle)*item.distance,Math.sin(bestAngle)*item.distance]);
+    }
+    return placed;
+  }
   function childGraph(tree, records) {
     const graph = new Map([...tree].map(([id,node]) => [id,new Set(node.children.map(child => child.id))]));
     for (const row of records) {
@@ -31,7 +56,7 @@ const AtlasGeometry = (() => {
     }
     return graph;
   }
-  return {known,radius,distanceRatio,childGraph};
+  return {known,radius,distanceRatio,spreadAngles,childGraph};
 })();
 if (typeof module !== 'undefined') module.exports = AtlasGeometry;
 if (typeof window !== 'undefined') startGoalAtlas();
@@ -45,26 +70,22 @@ function startGoalAtlas() {
   const media = matchMedia('(prefers-reduced-motion: reduce)');
   const memory = 'wuxie-goal-atlas-v1';
   const colors = {G001:'#81e5c4',G002:'#f2b978',G003:'#91b1ff'};
-  const defaults = {view:'nebula',scale:'log',bubbleScale:'log',speed:1,low:false,zoom:1,bubbleZoom:1,angle:0};
+  const defaults = {scale:'log',speed:1,low:false,zoom:1,angle:0};
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(memory) || '{}') || {}; } catch {}
   const options = {...defaults};
-  for (const key of ['scale','bubbleScale']) if (['log','area','uniform'].includes(saved[key])) options[key] = saved[key];
-  if (['nebula','bubble'].includes(saved.view)) options.view=saved.view;
+  if (['log','area','uniform'].includes(saved.scale)) options.scale=saved.scale;
   if ([0.5,1,2].includes(saved.speed)) options.speed=saved.speed;
   if (typeof saved.low==='boolean') options.low=saved.low;
-  for (const key of ['zoom','bubbleZoom']) if (typeof saved[key]==='number'&&saved[key]>=0.65&&saved[key]<=4) options[key]=saved[key];
+  if (typeof saved.zoom==='number'&&saved.zoom>=0.65&&saved.zoom<=4) options.zoom=saved.zoom;
   if (Number.isFinite(saved.angle)) options.angle=saved.angle%(2*Math.PI);
-  let selection = selected.id, trail=[root.id], page=0, recordsById, graph, maxAmount, visibleRows, orbitRows=[], orbitBranches=[], orbitLinks=[], hits=[];
-  let frame=0, lastTime=null, visible=false, playing=!media.matches, hovered=null, transition=0;
+  let selection = selected.id, recordsById, graph, maxAmount, visibleRows, orbitRows=[], orbitBranches=[], orbitLinks=[], hits=[];
+  let frame=0, lastTime=null, visible=false, playing=!media.matches, hovered=null;
   let toolbarHover=false, focusTarget=null, pan={x:0,y:0}, pointers=new Map(), pinchDistance=0, dragged=false;
 
   const search=el('atlas-search'), category=el('atlas-category'), need=el('atlas-need'), amountMode=el('atlas-amount');
   const scale=el('atlas-scale'), speed=el('atlas-speed'), toggle=el('toggle-orbit'), accessible=el('atlas-accessible');
-  const isNebula=()=>options.view==='nebula';
   function store() { try { localStorage.setItem(memory,JSON.stringify(options)); } catch {} }
-  function selectedScale() { return isNebula()?options.scale:options.bubbleScale; }
-  function zoomKey() { return isNebula()?'zoom':'bubbleZoom'; }
   function graphChildren(id) { return [...(graph?.get(id) || [])]; }
   function budgetText(value) {
     return AtlasGeometry.known(value) ? (value>=1e8?(value/1e8).toLocaleString('zh-CN',{maximumFractionDigits:2})+' 亿元':value>=1e4?(value/1e4).toLocaleString('zh-CN',{maximumFractionDigits:2})+' 万元':money(value)) : '金额待确认';
@@ -147,6 +168,11 @@ function startGoalAtlas() {
         distance:AtlasGeometry.distanceRatio(row[amountMode.value],maxAmount)
       };
     }));
+    const angles=AtlasGeometry.spreadAngles(
+      orbitRows.map(item=>({id:item.row.id,angle:item.angle,distance:item.distance})),
+      orbitBranches.map(branch=>({angle:branch.angle,distance:0.23/0.43}))
+    );
+    for(const item of orbitRows)item.angle=angles.get(item.row.id);
     const displayed=new Set([root.id,...branchIds,...visibleRows.map(row=>row.id)]);
     orbitLinks=orbitBranches.map(branch=>[root.id,branch.id]);
     for(const item of orbitRows.filter(item=>item.visible)){
@@ -156,92 +182,30 @@ function startGoalAtlas() {
       for(const parent of row.parentIds||[])if(parent!==main&&displayed.has(parent))orbitLinks.push([parent,row.id]);
     }
     if(!nodes.has(selection))selection=root.id;
-    normalizeTrail();
     updateControls();
-    paint(performance.now());
+    paint();
     schedule();
   }
-  function normalizeTrail() {
-    const valid=[root.id];
-    for(const id of trail.slice(1)){
-      if(!graphChildren(valid.at(-1)).includes(id)||valid.includes(id))break;
-      valid.push(id);
-    }
-    trail=valid;
-  }
-  function bubbleChildren() {
-    return graphChildren(trail.at(-1)).filter(id=>!trail.includes(id)&&(!recordsById.has(id)||matches(recordsById.get(id))));
-  }
   function updateControls() {
-    el('atlas-nebula').setAttribute('aria-pressed',String(isNebula()));
-    el('atlas-bubble').setAttribute('aria-pressed',String(!isNebula()));
-    el('atlas-animation').hidden=!isNebula();
-    el('atlas-navigation').hidden=isNebula();
-    scale.value=selectedScale();speed.value=String(options.speed);
+    scale.value=options.scale;speed.value=String(options.speed);
     el('atlas-low').checked=options.low;
     toggle.textContent=playing?'暂停旋转':'播放旋转';
-    const children=bubbleChildren(), totalPages=Math.max(1,Math.ceil(children.length/3));
-    page=Math.min(page,totalPages-1);
-    el('atlas-prev').hidden=el('atlas-next').hidden=totalPages===1;
-    el('atlas-prev').disabled=page===0;el('atlas-next').disabled=page>=totalPages-1;
-    el('back').disabled=trail.length===1;
-    el('atlas-crumb').replaceChildren(...trail.map((id,index)=>button(nodes.get(id)?.name||id,()=>navigate(trail.slice(0,index+1)))));
-    const visibleIds=isNebula()?[root.id,...orbitBranches.map(branch=>branch.id),...visibleRows.map(row=>row.id)]:[trail.at(-1),...children.slice(page*3,page*3+3)];
+    const visibleIds=[root.id,...orbitBranches.map(branch=>branch.id),...visibleRows.map(row=>row.id)];
     accessible.replaceChildren(new Option('选择节点',''),...visibleIds.map(id=>new Option(nodes.get(id)?.name||id,id)));
     accessible.value=visibleIds.includes(selection)?selection:'';
-    const hiddenSelection=isNebula()&&recordsById.has(selection)&&!visibleIds.includes(selection);
-    el('atlas-status').textContent=(isNebula()?visibleRows.length+' 项目标 · '+({log:'对数',area:'面积比例（含最小标记）',uniform:'统一'}[options.scale]):children.length+' 个下级 · '+(page+1)+'/'+totalPages+' 组')
-      +(hiddenSelection?' · 已选目标被筛选隐藏':'');
+    const hiddenSelection=recordsById.has(selection)&&!visibleIds.includes(selection);
+    el('atlas-status').textContent=visibleRows.length+' 项目标 · '+({log:'对数',area:'面积比例（含最小标记）',uniform:'统一'}[options.scale])+
+      (hiddenSelection?' · 已选目标被筛选隐藏':'');
   }
-  function go(id) {
-    selection=id;
-    route(id);
-  }
-  function navigate(next) {
-    trail=next;page=0;transition=performance.now();go(next.at(-1));
-  }
-  function findPath(id) {
-    const pending=[root.id], parents=new Map([[root.id,null]]);
-    for (let index=0;index<pending.length;index++) {
-      const current=pending[index];
-      if(current===id){
-        const path=[];
-        for(let entry=id;entry!==null;entry=parents.get(entry))path.unshift(entry);
-        return path;
-      }
-      for(const child of graphChildren(current)){
-        if(!parents.has(child)){parents.set(child,current);pending.push(child);}
-      }
-    }
-    return null;
-  }
-  function follow(id) {
-    if(selection===id)return;
-    selection=id;
-    if(isNebula()||id===trail.at(-1))return;
-    const path=findPath(id);
-    if(!path)return;
-    if(graphChildren(id).length){trail=path;page=0;}
-    else if(path.length>1){
-      trail=path.slice(0,-1);
-      page=Math.max(0,Math.floor(bubbleChildren().indexOf(id)/3));
-    }
-  }
-  function choose(id) {
-    if(!id)return;
-    if(!isNebula()&&id!==trail.at(-1)&&graphChildren(id).some(child=>!trail.includes(child))){
-      navigate([...trail,id]);
-    }else go(id);
-  }
+  function choose(id) { if(id)route(id); }
   function locate() {
     const query=search.value.trim().toLowerCase();
     const found=[...recordsById.values()].find(row=>row.id.toLowerCase()===query) ||
       [...recordsById.values()].find(row=>row.name.toLowerCase().includes(query)&&query) ||
       [...nodes.values()].find(node=>node.name.toLowerCase().includes(query)&&query);
     if(!found){el('atlas-status').textContent='未找到目标';return;}
-    if(!isNebula())selection=null;
     route(found.id);
-    if(isNebula()){focusTarget=found.id;redraw();}
+    focusTarget=found.id;redraw();
     const hidden=recordsById.has(found.id)&&!matches(recordsById.get(found.id));
     if(hidden)el('atlas-status').textContent='已选目标被筛选隐藏，可在详情中解除筛选。';
   }
@@ -264,31 +228,7 @@ function startGoalAtlas() {
     marks.push({id:root.id,x:centerX,y:centerY,r:15});
     return marks;
   }
-  function bubblePositions(width,height,time) {
-    const center=trail.at(-1),children=bubbleChildren().slice(page*3,page*3+3);
-    const off=Math.min(width,height)*0.37*options.bubbleZoom;
-    const ease=media.matches||!transition?1:Math.min(1,(time-transition)/320);
-    const motion=1-Math.pow(1-Math.max(0,ease),3);
-    const cx=width/2,cy=height/2;
-    const valueFor=id=>{
-      if(recordsById.has(id))return recordsById.get(id)[amountMode.value];
-      if(amountMode.value!=='budget')return null;
-      if(id==='G001')return recordsById.get('G001-01')?.budget;
-      return nodes.get(id)?.budget;
-    };
-    const localMax=Math.max(0,...children.map(id=>valueFor(id)??0));
-    const marks=[{id:center,x:cx,y:cy,r:Math.min(48,width*0.12),row:recordsById.get(center)}];
-    children.forEach((id,index)=>{
-      const angle=-Math.PI/2+index*2*Math.PI/Math.max(3,children.length);
-      const row=recordsById.get(id);
-      const amount=valueFor(id);
-      const radius=AtlasGeometry.radius(amount,localMax,options.bubbleScale,17,40);
-      const distance=(0.55+AtlasGeometry.distanceRatio(amount,localMax)*0.45)*off*motion;
-      marks.push({id,x:cx+Math.cos(angle)*distance,y:cy+Math.sin(angle)*distance,r:radius,row,amount});
-    });
-    return marks;
-  }
-  function paint(time) {
+  function paint() {
     const width=canvas.clientWidth,height=canvas.clientHeight;
     if(!width||!height||!graph)return;
     const ratio=Math.min(devicePixelRatio||1,options.low?1:1.75);
@@ -296,17 +236,10 @@ function startGoalAtlas() {
     if(canvas.width!==pixelWidth||canvas.height!==pixelHeight){canvas.width=pixelWidth;canvas.height=pixelHeight;}
     ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,width,height);
     const circle=(x,y,r)=>{ctx.beginPath();ctx.arc(x,y,Math.max(0.1,r),0,Math.PI*2);};
-    const centerX=width/2+pan.x,centerY=height/2+pan.y;
-    if(isNebula()){
-      ctx.fillStyle='#7594b166';
-      for(let i=0;i<(options.low?36:95);i++)ctx.fillRect((i*997%977)*width/977,(i*617%991)*height/991,1,i%7===0?2:1);
-      for(const size of [0.17,0.3,0.43]){
-        ctx.beginPath();ctx.ellipse(centerX,centerY,Math.min(width,height)*size*options.zoom,Math.min(width,height)*size*options.zoom,0,0,Math.PI*2);
-        ctx.strokeStyle='#41617a55';ctx.stroke();
-      }
-    }
-    let marks=isNebula()?orbitalPositions(width,height):bubblePositions(width,height,time);
-    if(isNebula()&&focusTarget){
+    ctx.fillStyle='#7594b166';
+    for(let i=0;i<(options.low?36:95);i++)ctx.fillRect((i*997%977)*width/977,(i*617%991)*height/991,1,i%7===0?2:1);
+    let marks=orbitalPositions(width,height);
+    if(focusTarget){
       const target=marks.find(mark=>mark.id===focusTarget);
       if(target){
         const dx=width/2-target.x,dy=height/2-target.y;
@@ -316,18 +249,14 @@ function startGoalAtlas() {
         if(Math.hypot(dx,dy)<2)focusTarget=null;
       }else focusTarget=null;
     }
-    if(isNebula()){
-      const byId=new Map(marks.map(mark=>[mark.id,mark]));
-      for(const [parent,id] of orbitLinks){
-        const a=byId.get(parent),b=byId.get(id);
-        if(!a||!b)continue;
-        const branch=nodes.get(parent)?.branch||parent;
-        const line=colors[b.row?.branch]||colors[branch]||'#70bfd2';
-        ctx.strokeStyle=line+(id===selection||parent===selection&&parent!==root.id?'8a':'35');
-        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-      }
-    }else for(const mark of marks.slice(1)){
-      ctx.beginPath();ctx.moveTo(marks[0].x,marks[0].y);ctx.lineTo(mark.x,mark.y);ctx.strokeStyle='#61a2b17b';ctx.stroke();
+    const byId=new Map(marks.map(mark=>[mark.id,mark]));
+    for(const [parent,id] of orbitLinks){
+      const a=byId.get(parent),b=byId.get(id);
+      if(!a||!b)continue;
+      const branch=nodes.get(parent)?.branch||parent;
+      const line=colors[b.row?.branch]||colors[branch]||'#70bfd2';
+      ctx.strokeStyle=line+(id===selection||parent===selection&&parent!==root.id?'a0':'40');
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
     const boxes=[];
     hits=[];
@@ -348,7 +277,7 @@ function startGoalAtlas() {
         ctx.beginPath();ctx.arc(x,y,r+4,-Math.PI/2,-Math.PI/2+Math.PI*2*row.progress);
         ctx.strokeStyle='#a8ffe0';ctx.stroke();
       }
-      if(id===root.id&&isNebula()){
+      if(id===root.id){
         ctx.beginPath();ctx.ellipse(x,y,r*1.65,r*0.56,-0.4,0,Math.PI*2);
         ctx.strokeStyle='#9edddb9c';ctx.stroke();
       }
@@ -359,10 +288,10 @@ function startGoalAtlas() {
     for(const mark of labels){
       if(mark.x<0||mark.x>width||mark.y<0||mark.y>height)continue;
       const forced=mark.id===selection||mark.id===hovered;
-      if(isNebula()&&!forced&&!mark.branch&&mark.id!==root.id)continue;
+      if(!forced&&!mark.branch&&mark.id!==root.id)continue;
       const name=nodes.get(mark.id)?.name||mark.id;
       const caption=(mark.row?.resolved?'✓ ':'')+(name.length>14?name.slice(0,14)+'…':name);
-      const value=mark.row?budgetText(mark.row[amountMode.value]):('amount' in mark?(nodes.get(mark.id)?.categoryNode&&AtlasGeometry.known(mark.amount)?'分类口径 · ':'')+budgetText(mark.amount):'');
+      const value=mark.row?budgetText(mark.row[amountMode.value]):'';
       const widthText=Math.max(ctx.measureText(caption).width,ctx.measureText(value).width)+10;
       const heightText=value?32:17;
       const x=Math.max(0,Math.min(width-widthText,mark.x-widthText/2));
@@ -375,11 +304,13 @@ function startGoalAtlas() {
       hits.push({id:mark.id,row:mark.row,box:{x,y,w:widthText,h:heightText}});
     }
   }
+  function canRotate(){
+    return playing&&!hovered&&!toolbarHover&&!pointers.size&&!el('record-editor').open&&!el('category-editor').open;
+  }
   function schedule() {
-    const animation=isNebula()?(playing&&!hovered&&!toolbarHover&&!pointers.size&&!el('record-editor').open&&!el('category-editor').open||focusTarget):transition&&performance.now()-transition<330&&!media.matches;
-    if(visible&&!document.hidden&&animation){
+    if(visible&&!document.hidden&&(canRotate()||focusTarget)){
       if(!frame)frame=requestAnimationFrame(tick);
-    }else if(frame){
+    }else{
       cancelAnimationFrame(frame);frame=0;lastTime=null;
     }
   }
@@ -388,9 +319,9 @@ function startGoalAtlas() {
     const interval=options.low?65:28;
     if(lastTime===null)lastTime=time-interval;
     if(time-lastTime>=interval){
-      if(isNebula()&&playing&&!focusTarget&&!hovered&&!toolbarHover&&!pointers.size&&!el('record-editor').open&&!el('category-editor').open)
+      if(!focusTarget&&canRotate())
         options.angle=(options.angle+Math.min(90,time-lastTime)*options.speed*2*Math.PI/120000)%(2*Math.PI);
-      paint(time);lastTime=time;
+      paint();lastTime=time;
     }
     schedule();
   }
@@ -402,8 +333,8 @@ function startGoalAtlas() {
     const {x,y}=local(event);
     return [...hits].reverse().find(mark=>mark.box?x>=mark.box.x&&x<=mark.box.x+mark.box.w&&y>=mark.box.y&&y<=mark.box.y+mark.box.h:Math.hypot(x-mark.x,y-mark.y)<=mark.r);
   }
-  function redraw(){paint(performance.now());schedule();}
-  function zoomBy(factor){options[zoomKey()]=Math.max(.65,Math.min(4,options[zoomKey()]*factor));store();redraw();}
+  function redraw(){paint();schedule();}
+  function zoomBy(factor){options.zoom=Math.max(.65,Math.min(4,options.zoom*factor));store();redraw();}
   canvas.onpointerdown=event=>{
     if(!pointers.size){dragged=false;pinchDistance=0;}
     canvas.setPointerCapture(event.pointerId);
@@ -422,7 +353,7 @@ function startGoalAtlas() {
       }
       const dx=point.x-previous.x,dy=point.y-previous.y;
       if(Math.hypot(dx,dy)>1.5)dragged=true;
-      if(dragged&&isNebula()){options.angle+=dx*0.009;pan.y+=dy;redraw();}
+      if(dragged){options.angle+=dx*0.009;pan.y+=dy;redraw();}
     }else if(event.pointerType!=='touch'){
       const item=hit(event);hovered=item?.id??null;
       const info=el('atlas-hover');info.hidden=!item;
@@ -435,7 +366,7 @@ function startGoalAtlas() {
     if(tracked&&!cancel&&!dragged&&!pointers.size){
       const item=hit(event);
       if(item)choose(item.id);
-      else if(isNebula())go(root.id);
+      else choose(root.id);
     }
     store();redraw();
   }
@@ -444,7 +375,7 @@ function startGoalAtlas() {
   canvas.onpointerleave=()=>{hovered=null;el('atlas-hover').hidden=true;redraw();};
   canvas.ondblclick=event=>{
     const item=hit(event);
-    if(item&&isNebula()){focusTarget=item.id;redraw();}
+    if(item){focusTarget=item.id;redraw();}
   };
   canvas.addEventListener('wheel',event=>{event.preventDefault();zoomBy(event.deltaY<0?1.08:1/1.08);},{passive:false});
   function branchName(branch) {
@@ -485,9 +416,6 @@ function startGoalAtlas() {
           el('pain-detail').scrollIntoView({block:'center'});
         })));
       }
-      if(!isNebula()&&node.id!==trail.at(-1)&&!bubbleChildren().slice(page*3,page*3+3).includes(node.id)){
-      section.append(button('定位已选目标',()=>{selection=null;route(node.id);}));
-    }
     if(!matches(row))section.append(button('解除筛选',()=>{search.value=category.value='';need.value='all';refresh();window.detail();}));
     }else if(node.categoryNode&&node.budget!=null){
       const summary=document.createElement('p');summary.textContent='分类汇总 · '+budgetText(node.budget);section.append(summary);
@@ -495,21 +423,10 @@ function startGoalAtlas() {
     if(!readOnlyView&&(row||node.categoryNode))section.append(button(row?'编辑目标':'编辑分类',()=>row?openRecordEditor('goals',row.id):openCategoryEditor('goals',node.id)));
     if(section.children.length)panel.append(section);
   }
-  function switchView(next){
-    options.view=next;focusTarget=null;hovered=null;lastTime=null;
-    el('atlas-hover').hidden=true;
-    store();refresh();window.detail();
-  }
-  el('atlas-nebula').onclick=()=>switchView('nebula');
-  el('atlas-bubble').onclick=()=>switchView('bubble');
-  el('home').onclick=()=>navigate([root.id]);
-  el('back').onclick=()=>{if(trail.length>1)navigate(trail.slice(0,-1));};
-  el('atlas-prev').onclick=()=>{page=Math.max(0,page-1);refresh();};
-  el('atlas-next').onclick=()=>{page++;refresh();};
   el('atlas-locate').onclick=locate;
   search.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();locate();}};
-  for(const control of [search,category,need,amountMode])control.oninput=()=>{page=0;refresh();window.detail();};
-  scale.onchange=()=>{options[isNebula()?'scale':'bubbleScale']=scale.value;store();refresh();};
+  for(const control of [search,category,need,amountMode])control.oninput=()=>{refresh();window.detail();};
+  scale.onchange=()=>{options.scale=scale.value;store();refresh();};
   speed.onchange=()=>{options.speed=Number(speed.value);store();};
   toggle.onclick=()=>{playing=!playing;lastTime=null;updateControls();schedule();};
   el('atlas-low').onchange=event=>{options.low=event.target.checked;store();redraw();};
@@ -537,7 +454,7 @@ function startGoalAtlas() {
   for(const id of ['record-editor','category-editor'])el(id).addEventListener('close',schedule);
   new ResizeObserver(redraw).observe(canvas);
   new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;redraw();}).observe(canvas);
-  window.goalAtlas={refresh,follow,detail,level:id=>recordsById?.get(id)?.level||''};
+  window.goalAtlas={refresh,follow:id=>{selection=id;},detail,level:id=>recordsById?.get(id)?.level||''};
   refresh();
   window.detail();
 }
