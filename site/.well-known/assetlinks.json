@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.wuxie.lifeatlas",
+      "sha256_cert_fingerprints": [
+        "A0:75:E6:4E:3A:37:56:01:F5:B3:75:0E:A5:57:A7:E4:75:A5:48:23:02:9C:98:D2:50:BC:2A:3C:BE:27:75:E9"
+      ]
+    }
+  }
+]

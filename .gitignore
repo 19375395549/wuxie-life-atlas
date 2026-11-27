@@ -1,0 +1,14 @@
+# API 密钥、账号配置及本地环境文件绝不上传至 GitHub
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+.wrangler/
+node_modules/
+*.log
+*.pem
+*.key
+.DS_Store
+# 不保留旧版 ZIP 或历史版本副本
+*.zip
+*.patch
