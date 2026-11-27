@@ -84,7 +84,7 @@ async function changeCategory(env,kind,id,method,data,current){
   const category=categories.find(node=>node.id===id);
   if(!category)throw Object.assign(new Error('找不到指定分类'),{status:404});
   if(method==='DELETE'){
-    if(categories.some(node=>node.parent===id)||current[kind].some(record=>record.category===id||record.parentIds?.includes(id))){
+    if(categories.some(node=>node.parent===id)||current[kind].some(record=>record.category===id)){
       throw Object.assign(new Error('请先移走下级分类和登记项，再删除此分类'),{status:409});
     }
     await saveCategory(env,kind,{...category,deleted:true});
@@ -170,14 +170,10 @@ async function queryAll(env,id){
   return results;
 }
 const GOAL_CODE = /^G00[123]-\d{2,}$/;
-function asGoal(page){const p=page.properties||{};
-  const [parent,related='']=readPlain(p[GOAL_FIELDS.parent]).split('\n@links:');
-  return {id:readPlain(p[GOAL_FIELDS.id]).trim() || page.id,pageId:page.id,name:readPlain(p[GOAL_FIELDS.name]),parent,parentIds:related.split(',').filter(id=>/^[a-zA-Z0-9-]{1,64}$/.test(id)),branch:readSelect(p[GOAL_FIELDS.branch]),budget:numberOrNull(p[GOAL_FIELDS.budget]?.number),type:readSelect(p[GOAL_FIELDS.type]),actual:numberOrNull(p[GOAL_FIELDS.actual]?.number),priority:readSelect(p[GOAL_FIELDS.priority])||'待确认',note:readPlain(p[GOAL_FIELDS.note])};}
+function asGoal(page){const p=page.properties||{};return {id:readPlain(p[GOAL_FIELDS.id]).trim() || page.id,pageId:page.id,name:readPlain(p[GOAL_FIELDS.name]),parent:readPlain(p[GOAL_FIELDS.parent]),branch:readSelect(p[GOAL_FIELDS.branch]),budget:numberOrNull(p[GOAL_FIELDS.budget]?.number),type:readSelect(p[GOAL_FIELDS.type]),actual:numberOrNull(p[GOAL_FIELDS.actual]?.number),priority:readSelect(p[GOAL_FIELDS.priority])||'待确认',note:readPlain(p[GOAL_FIELDS.note])};}
 function asPain(page,idByPage){const p=page.properties||{};const relation=p[PAIN_FIELDS.relation];const related=(relation?.relation||[]).map(x=>idByPage[x.id]).filter(Boolean);const listed=readPlain(p[PAIN_FIELDS.links]).split(/[，,\s]+/).filter(x=>/^G00[123]-\d{2,}$/.test(x));const tierName=readSelect(p[PAIN_FIELDS.tier]);const tier=Object.keys(TIER_NAMES).find(x=>TIER_NAMES[x]===tierName)||(tierName.startsWith(CATEGORY_PREFIX)?tierName:'L3');return {id:readPlain(p[PAIN_FIELDS.id]),pageId:page.id,name:readPlain(p[PAIN_FIELDS.name]),tier,note:readPlain(p[PAIN_FIELDS.note]),links:[...new Set(Array.isArray(relation?.relation)?related:listed)]};}
 async function state(env){
   const [goalPages,painPages]=await Promise.all([queryAll(env,env.NOTION_GOALS_SOURCE_ID),queryAll(env,env.NOTION_PAINS_SOURCE_ID)]);
-  const rootPage=goalPages.find(page=>readPlain(page.properties?.[GOAL_FIELDS.id])===CATEGORY_PREFIX+GOAL_ROOT);
-  const goalRoot={id:GOAL_ROOT,name:readPlain(rootPage?.properties?.[GOAL_FIELDS.name]).trim()||'无邪人生目标树',pageId:rootPage?.id};
   const hierarchy={goals:categoriesFromPages('goals',goalPages),pains:categoriesFromPages('pains',painPages)};
   const goals=goalPages.map(asGoal).filter(g=>GOAL_CODE.test(g.id)||(g.id===g.pageId&&g.name.trim()))
     .map(goal=>({...goal,category:goalCategory(goal,hierarchy.goals)}));
@@ -186,7 +182,7 @@ async function state(env){
     const category=pain.tier.startsWith(CATEGORY_PREFIX)?pain.tier.slice(CATEGORY_PREFIX.length):pain.tier;
     return {...pain,category:hierarchy.pains.some(node=>node.id===category)?category:''};
   });
-  return {ok:true,version:'V2.0.3',goals,pains,hierarchy,goalRoot,summary:{goalCount:goals.length,painCount:pains.length,consumption:goals.filter(x=>x.branch==='G002').reduce((a,x)=>a+(x.budget||0),0),investment:goals.filter(x=>x.branch==='G003').reduce((a,x)=>a+(x.budget||0),0)}};
+  return {ok:true,version:'V2.0.3',goals,pains,hierarchy,summary:{goalCount:goals.length,painCount:pains.length,consumption:goals.filter(x=>x.branch==='G002').reduce((a,x)=>a+(x.budget||0),0),investment:goals.filter(x=>x.branch==='G003').reduce((a,x)=>a+(x.budget||0),0)}};
 }
 function nextGoalCode(branch,arr){const n=arr.filter(x=>x.branch===branch&&GOAL_CODE.test(x.id)).reduce((max,x)=>Math.max(max,Number(x.id.split('-').at(-1))||0),0)+1;return branch+'-'+String(n).padStart(2,'0');}
 function nextPainCode(arr){const n=arr.reduce((max,x)=>Math.max(max,Number(x.id.slice(1))||0),0)+1;return 'P'+String(n).padStart(3,'0');}
@@ -226,26 +222,7 @@ async function patchGoal(env,id,data,existing,categories){
     if(existing.some(g=>g.id!==id&&g.branch===goal.branch&&g.name.trim()===name))throw Object.assign(new Error('同一分支已存在此目标'),{status:409});
     props[GOAL_FIELDS.name]=titleValue(name);
   }
-  if(Object.hasOwn(data,'category')||Object.hasOwn(data,'parentIds')){
-    const primary=Object.hasOwn(data,'category')?CATEGORY_PREFIX+requireCategory('goals',data.category,categories,true):goal.parent;
-    const parents=data.parentIds??goal.parentIds;
-    const goalsById=new Map(existing.map(record=>[record.id,record]));
-    const validIds=new Set([...goalsById.keys(),...categories.map(category=>category.id)]);
-    if(!Array.isArray(parents)||parents.length>20||parents.some(parent=>!validIds.has(parent))){
-      throw Object.assign(new Error('请选择有效的关联上级，最多 20 个'),{status:400});
-    }
-    const nextParents=[...new Set(parents)];
-    const pending=[...nextParents],seen=new Set();
-    while(pending.length){
-      const parent=pending.pop();
-      if(parent===id)throw Object.assign(new Error('不能建立循环的目标关系'),{status:400});
-      if(seen.has(parent))continue;
-      seen.add(parent);
-      const record=goalsById.get(parent);
-      if(record)pending.push(record.parent,...record.parentIds);
-    }
-    props[GOAL_FIELDS.parent]=textValue(primary+(nextParents.length?'\n@links:'+nextParents.join(','):''));
-  }
+  if(Object.hasOwn(data,'category'))props[GOAL_FIELDS.parent]=textValue(CATEGORY_PREFIX+requireCategory('goals',data.category,categories,true));
   if(Object.hasOwn(data,'actual'))props['实际金额']={number:validateAmount(data.actual)};
   if(Object.hasOwn(data,'note'))props['说明']=textValue(cleanNote(data.note));
   if(Object.hasOwn(data,'budget'))props['预算人民币']={number:validateAmount(data.budget)};
@@ -294,66 +271,15 @@ async function patchPain(env,id,data,existingPains,goals,categories){
   return asPain(page,Object.fromEntries(goals.map(g=>[g.pageId,g.id])));
 }
 function errorResponse(e){return fail(e.message||'服务端处理失败',e.status>=400&&e.status<=599?e.status:500);}
-async function restoreArchivedRecords(env,data){
-  if(data.version!=='V3.0')throw Object.assign(new Error('备份版本无效'),{status:400});
-  const groups=[
-    {items:data.goals,source:env.NOTION_GOALS_SOURCE_ID,fields:GOAL_FIELDS,code:GOAL_CODE,amounts:['budget','actual']},
-    {items:data.pains,source:env.NOTION_PAINS_SOURCE_ID,fields:PAIN_FIELDS,code:/^P\d{3,}$/,amounts:[]}
-  ];
-  const uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-  const normalize=value=>String(value||'').replaceAll('-','').toLowerCase();
-  const seen=new Set();
-  for(const group of groups){
-    if(!Array.isArray(group.items)||group.items.length>1500)throw Object.assign(new Error('备份记录结构无效'),{status:400});
-    for(const item of group.items){
-      if(!item||typeof item.id!=='string'||typeof item.pageId!=='string'||!uuid.test(item.pageId)||
-        (!group.code.test(item.id)&&!(group.fields===GOAL_FIELDS&&item.id===item.pageId))||seen.has(item.pageId)){
-        throw Object.assign(new Error('备份必须包含原始 Notion 记录标识'),{status:400});
-      }
-      seen.add(item.pageId);
-      for(const field of group.amounts)validateAmount(item[field]);
-    }
-  }
-  const result={restored:0,active:0,unavailable:0};
-  for(const group of groups){
-    const live=new Set((await queryAll(env,group.source)).map(page=>page.id));
-    for(const item of group.items){
-      if(live.has(item.pageId)){result.active++;continue}
-      try {
-        const path='/pages/'+item.pageId;
-        const page=await notion(env,path);
-        const code=readPlain(page.properties?.[group.fields.id]).trim()||page.id;
-        if(normalize(page.parent?.data_source_id)!==normalize(group.source)||code!==item.id){
-          result.unavailable++;continue;
-        }
-        if(!page.in_trash&&!page.archived){result.active++;continue}
-        await notion(env,path,{method:'PATCH',body:{in_trash:false}});
-        result.restored++;
-      } catch {result.unavailable++}
-    }
-  }
-  return result;
-}
 async function api(request,env,url){
   const method=request.method,path=url.pathname;
   const origin=request.headers.get('Origin');if((method==='DELETE'&&origin!==url.origin)||(origin&&origin!==url.origin))return fail('拒绝跨站登记请求',403);
   try{
-    if(method==='POST'&&path==='/api/restore'){
-      if(origin!==url.origin)return fail('拒绝跨站恢复请求',403);
-      return json({ok:true,...await restoreArchivedRecords(env,await bodyJson(request,2000000))});
-    }
     if(method==='GET'&&path==='/api/state')return json(await state(env));
     if(method==='GET'&&path==='/api/health'){
       const [g,p]=await Promise.all([queryAll(env,env.NOTION_GOALS_SOURCE_ID),queryAll(env,env.NOTION_PAINS_SOURCE_ID)]);
       const count=(pages,field)=>pages.filter(page=>!readPlain(page.properties?.[field]).startsWith(CATEGORY_PREFIX)).length;
       return json({ok:true,goalCount:count(g,GOAL_FIELDS.id),painCount:count(p,PAIN_FIELDS.id),storage:'notion',verified:true});
-    }
-    if(method==='PATCH'&&path==='/api/categories/goals/root'){
-      const data=await bodyJson(request);
-      const name=cleanName(data.name);
-      const {goalRoot}=await state(env);
-      await saveCategory(env,'goals',{...goalRoot,name,parent:'',order:0});
-      return json({ok:true});
     }
     const categoryMatch=path.match(/^\/api\/categories\/(goals|pains)(?:\/([A-Za-z0-9-]+))?$/);
     if(categoryMatch){
@@ -387,7 +313,7 @@ async function api(request,env,url){
       if(goalMatch){
         const linked=current.pains.filter(p=>p.links.includes(id));
         if(linked.length)return fail('请先在对应痛点中取消关联：'+linked.map(p=>p.id).join('、'),409);
-        if(current.goals.some(g=>g.parent===id||g.parentIds?.includes(id)))return fail('请先处理该目标的下级目标',409);
+        if(current.goals.some(g=>g.parent===id))return fail('请先处理该目标的下级目标',409);
       }
       await notion(env,'/pages/'+item.pageId,{method:'PATCH',body:{in_trash:true}});
       return json({ok:true});
@@ -400,9 +326,6 @@ export default {
     const publicAssets = new Set(['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
     const url=new URL(request.url);
     const path=url.pathname;
-    if ((path==='/view/needs.js'||path==='/view/needs-ui.js'||path==='/view/goal-atlas.js')&&['GET','HEAD'].includes(request.method)&&env.ASSETS){
-      return withHeaders(await env.ASSETS.fetch(new Request(new URL(path.slice('/view'.length),url),request)));
-    }
     if (path==='/view' || path==='/view/' || path==='/view/state') {
       if (!['GET','HEAD'].includes(request.method)) {
         return withHeaders(new Response(null,{status:405,headers:{Allow:'GET, HEAD'}}));
@@ -413,9 +336,9 @@ export default {
         return withHeaders(await env.ASSETS.fetch(new Request(new URL('/',url),request)));
       }
       try {
-        const {goals,pains,hierarchy,goalRoot,...snapshot}=await state(env);
+        const {goals,pains,hierarchy,...snapshot}=await state(env);
         const withoutPageId=({pageId,...record})=>record;
-        const response=json({...snapshot,goalRoot:withoutPageId(goalRoot),hierarchy:{goals:hierarchy.goals.map(withoutPageId),pains:hierarchy.pains.map(withoutPageId)},goals:goals.map(withoutPageId),pains:pains.map(withoutPageId)});
+        const response=json({...snapshot,hierarchy:{goals:hierarchy.goals.map(withoutPageId),pains:hierarchy.pains.map(withoutPageId)},goals:goals.map(withoutPageId),pains:pains.map(withoutPageId)});
         return withHeaders(request.method==='HEAD'?new Response(null,{headers:response.headers}):response);
       } catch {
         return withHeaders(fail('暂时无法读取目标数据，请稍后再试',503));
