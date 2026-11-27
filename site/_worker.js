@@ -204,7 +204,7 @@ async function api(request,env,url){
 }
 export default {
   async fetch(request,env,ctx){
-    const publicAssets = new Set(['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
+    const publicAssets = new Set(['/view/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
     const path = new URL(request.url).pathname;
     if (publicAssets.has(path) && ['GET', 'HEAD'].includes(request.method) && env.ASSETS) {
       return withHeaders(await env.ASSETS.fetch(request));

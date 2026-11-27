@@ -20,12 +20,16 @@
   "site_file_sha256": {
     ".well-known/assetlinks.json": "0058d0930e228faae60a2f2b15e69bf2badf17978ea65d431dac68e79fce127c",
     "_routes.json": "cd85544e6e0aaaee95f1e480ba45c72388ae8db8a09ac23cbe103e9eb0bc16b7",
-    "_worker.js": "8b86f656ca252df9630f06ecc57aed6d3b098344e424277aa99565874ba11123",
+    "_worker.js": "05bb53af7db51459b56da59bddde369f4cbd4921b820e9cea9ca3293f2400f75",
     "icon-192.png": "baf7f184225042f7a86f68fd5cd7582a3d90b97181c9b9d0dac02b299ee8e8a3",
     "icon-512.png": "817528119d50809bac58f7e2a3d29fee05f363949f97734632ea22c0d881532c",
     "index.html": "fd295fd98f69f72affa9488640c99e68be8064d007f678ad2a764b6645215280",
     "manifest.webmanifest": "62ad5a522192602b5594d963b2af77e3db4d4c7d30decb07776befc0cdabff5c",
-    "robots.txt": "331ea9090db0c9f6f597bd9840fd5b171830f6e0b3ba1cb24dfa91f0c95aedc1"
+    "robots.txt": "331ea9090db0c9f6f597bd9840fd5b171830f6e0b3ba1cb24dfa91f0c95aedc1",
+    "view/index.html": "459a38a50917316b69cbe7522b77944da850907c722b824a852d6b7afff63054"
   },
-  "test_result": "本地静态检查、模拟Notion浏览器测试、模拟Cloudflare Access/Notion服务端测试通过；未进行真实云端部署验收"
+  "test_result": "本地静态检查、模拟Notion浏览器测试、模拟Cloudflare Access/Notion服务端测试通过；未进行真实云端部署验收",
+  "files_added": [
+    "view/index.html"
+  ]
 }
