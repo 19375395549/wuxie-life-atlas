@@ -51,3 +51,10 @@ GitHub 仓库 → Settings → Secrets and variables → Actions → New reposit
 文档参考：
 - https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/
 - https://developers.cloudflare.com/pages/functions/advanced-mode/
+
+## 产品需求文档
+
+- [PRD V1.0（Markdown）](docs/无邪人生目标树-产品需求文档-PRD-V1.0.md) 用于日常编辑和 Git 差异审阅。
+- [PRD V1.0（Word）](docs/无邪人生目标树-产品需求文档-PRD-V1.0.docx) 保留收到的原始版本。
+
+PRD V1.0 记录的是编写时的状态，其中的生产版本和部署待办属于历史记录。后续发布新版 PRD 时，同步更新对应的 Word 版本和此处的链接。
