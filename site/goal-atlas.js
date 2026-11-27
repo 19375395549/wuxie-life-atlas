@@ -8,6 +8,10 @@ const AtlasGeometry = (() => {
     const fraction = mode === 'area' ? Math.sqrt(amount / max) : Math.log1p(amount) / Math.log1p(max);
     return mode === 'area' ? Math.max(minRadius,maxRadius * fraction) : minRadius + (maxRadius-minRadius) * fraction;
   }
+  function distanceRatio(amount,max) {
+    if(!known(amount))return 0.15;
+    return 0.24+0.76*(max>0?Math.log1p(amount)/Math.log1p(max):0);
+  }
   function childGraph(tree, records) {
     const graph = new Map([...tree].map(([id,node]) => [id,new Set(node.children.map(child => child.id))]));
     for (const row of records) {
@@ -27,7 +31,7 @@ const AtlasGeometry = (() => {
     }
     return graph;
   }
-  return {known,radius,childGraph};
+  return {known,radius,distanceRatio,childGraph};
 })();
 if (typeof module !== 'undefined') module.exports = AtlasGeometry;
 if (typeof window !== 'undefined') startGoalAtlas();
@@ -112,7 +116,8 @@ function startGoalAtlas() {
     const included=new Set(visibleRows.map(row=>row.id));
     orbitRows=[...recordsById.values()].sort((a,b)=>a.id.localeCompare(b.id)).map(row=>({
       row,visible:included.has(row.id),
-      unit:AtlasGeometry.radius(row[amountMode.value],maxAmount,options.scale,0,1)
+      unit:AtlasGeometry.radius(row[amountMode.value],maxAmount,options.scale,0,1),
+      distance:AtlasGeometry.distanceRatio(row[amountMode.value],maxAmount)
     }));
     if(!nodes.has(selection))selection=root.id;
     normalizeTrail();
@@ -205,43 +210,37 @@ function startGoalAtlas() {
     if(hidden)el('atlas-status').textContent='已选目标被筛选隐藏，可在详情中解除筛选。';
   }
   function orbitalPositions(width,height) {
-    const rows=orbitRows;
-    const spacing=Math.max(21,Math.min(55,Math.min(width,height)*0.115));
-    const scale=options.zoom;
-    const offsetX=width/2+pan.x,offsetY=height/2+pan.y;
-    const ringCount=Math.max(1,Math.ceil((Math.sqrt(1+2*rows.length)-1)/2));
-    const fit=Math.min(1,Math.min(width,height)*0.45/(ringCount*spacing));
+    const size=Math.min(width,height),zoom=options.zoom;
+    const maxRadius=Math.max(7,Math.min(23,size/Math.max(16,Math.sqrt(orbitRows.length)*4)))*zoom;
+    const centerX=width/2+pan.x,centerY=height/2+pan.y;
     const marks=[];
-    let index=0;
-    for(let ring=1;index<rows.length;ring++){
-      const capacity=ring*6, count=Math.min(capacity,rows.length-index);
-      const distance=ring*spacing*fit*scale;
-      for(let position=0;position<count;position++,index++){
-        const {row,visible,unit}=rows[index];
-        if(!visible)continue;
-        const angle=options.angle+(position/count+ ring*0.097)*Math.PI*2;
-        const x=offsetX+Math.cos(angle)*distance,y=offsetY+Math.sin(angle)*distance*0.78;
-        const maxRadius=Math.max(7,Math.min(24,spacing*fit*0.38))*scale;
-        const minimum=Math.min(maxRadius,4*scale);
-        const radius=options.scale==='area'?Math.max(minimum,maxRadius*unit):minimum+(maxRadius-minimum)*unit;
-        marks.push({id:row.id,x,y,r:radius,depth:Math.sin(angle),row});
-      }
+    for(const [index,{row,visible,unit,distance}] of orbitRows.entries()){
+      if(!visible)continue;
+      const angle=options.angle+index*Math.PI*(3-Math.sqrt(5));
+      const offset=distance*size*0.43*zoom;
+      const x=centerX+Math.cos(angle)*offset,y=centerY+Math.sin(angle)*offset;
+      const minimum=Math.min(maxRadius,4*zoom);
+      const radius=options.scale==='area'?Math.max(minimum,maxRadius*unit):minimum+(maxRadius-minimum)*unit;
+      marks.push({id:row.id,x,y,r:radius,depth:Math.sin(angle),row});
     }
     return marks;
   }
   function bubblePositions(width,height,time) {
     const center=trail.at(-1),children=bubbleChildren().slice(page*3,page*3+3);
-    const off=Math.min(width,height)*0.31*options.bubbleZoom;
+    const off=Math.min(width,height)*0.37*options.bubbleZoom;
     const ease=media.matches||!transition?1:Math.min(1,(time-transition)/320);
     const motion=1-Math.pow(1-Math.max(0,ease),3);
     const cx=width/2,cy=height/2;
-    const localMax=Math.max(0,...children.map(id=>recordsById.get(id)?.[amountMode.value]??0));
+    const valueFor=id=>recordsById.has(id)?recordsById.get(id)[amountMode.value]:(amountMode.value==='budget'?nodes.get(id)?.budget:null);
+    const localMax=Math.max(0,...children.map(id=>valueFor(id)??0));
     const marks=[{id:center,x:cx,y:cy,r:Math.min(48,width*0.12),row:recordsById.get(center)}];
     children.forEach((id,index)=>{
       const angle=-Math.PI/2+index*2*Math.PI/Math.max(3,children.length);
       const row=recordsById.get(id);
-      const radius=AtlasGeometry.radius(row?.[amountMode.value],localMax,options.bubbleScale,17,40);
-      marks.push({id,x:cx+Math.cos(angle)*off*motion,y:cy+Math.sin(angle)*off*motion,r:row?radius:24,row});
+      const amount=valueFor(id);
+      const radius=AtlasGeometry.radius(amount,localMax,options.bubbleScale,17,40);
+      const distance=(0.55+AtlasGeometry.distanceRatio(amount,localMax)*0.45)*off*motion;
+      marks.push({id,x:cx+Math.cos(angle)*distance,y:cy+Math.sin(angle)*distance,r:radius,row,amount});
     });
     return marks;
   }
@@ -258,7 +257,7 @@ function startGoalAtlas() {
       ctx.fillStyle='#7594b166';
       for(let i=0;i<(options.low?36:95);i++)ctx.fillRect((i*997%977)*width/977,(i*617%991)*height/991,1,i%7===0?2:1);
       for(const size of [0.17,0.3,0.43]){
-        ctx.beginPath();ctx.ellipse(centerX,centerY,Math.min(width,height)*size*options.zoom,Math.min(width,height)*size*0.78*options.zoom,0,0,Math.PI*2);
+        ctx.beginPath();ctx.ellipse(centerX,centerY,Math.min(width,height)*size*options.zoom,Math.min(width,height)*size*options.zoom,0,0,Math.PI*2);
         ctx.strokeStyle='#41617a55';ctx.stroke();
       }
       circle(centerX,centerY,6);ctx.fillStyle='#a7efec77';ctx.fill();
@@ -306,7 +305,7 @@ function startGoalAtlas() {
       const forced=mark.id===selection||mark.id===hovered;
       const name=nodes.get(mark.id)?.name||mark.id;
       const caption=(mark.row?.resolved?'✓ ':'')+(name.length>14?name.slice(0,14)+'…':name);
-      const value=mark.row?budgetText(mark.row[amountMode.value]):'';
+      const value=mark.row?budgetText(mark.row[amountMode.value]):('amount' in mark?budgetText(mark.amount):'');
       const widthText=Math.max(ctx.measureText(caption).width,ctx.measureText(value).width)+10;
       const heightText=value?32:17;
       const x=Math.max(0,Math.min(width-widthText,mark.x-widthText/2));

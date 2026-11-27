@@ -1,10 +1,12 @@
 const assert = require('node:assert/strict');
-const { radius, childGraph } = require('./site/goal-atlas.js');
+const { radius, distanceRatio, childGraph } = require('./site/goal-atlas.js');
 assert.equal(radius(null, 100, 'log', 4, 20), 4);
 assert.equal(radius(0, 100, 'log', 4, 20), 4);
 assert.equal(radius(100, 100, 'log', 4, 20), 20);
 assert.equal(radius(25, 100, 'area', 0, 20), 10);
 assert.equal(radius(25, 100, 'uniform', 4, 20), 12);
+assert.ok(distanceRatio(100,100)>distanceRatio(25,100));
+assert.ok(distanceRatio(0,100)>distanceRatio(null,100));
 const leaf = {id:'goal',children:[]};
 const first = {id:'g1',children:[leaf]};
 const second = {id:'g2',children:[]};
