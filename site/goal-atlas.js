@@ -2,8 +2,8 @@
 const AtlasGeometry = (() => {
   const known = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
   function radius(amount, max, mode, minRadius, maxRadius) {
-    if (!known(amount) || amount === 0) return minRadius;
     if (mode === 'uniform') return (minRadius + maxRadius) / 2;
+    if (!known(amount) || amount === 0) return minRadius;
     if (!(max > 0)) return minRadius;
     const fraction = mode === 'area' ? Math.sqrt(amount / max) : Math.log1p(amount) / Math.log1p(max);
     return mode === 'area' ? Math.max(minRadius,maxRadius * fraction) : minRadius + (maxRadius-minRadius) * fraction;
@@ -45,7 +45,7 @@ function startGoalAtlas() {
   const media = matchMedia('(prefers-reduced-motion: reduce)');
   const memory = 'wuxie-goal-atlas-v1';
   const colors = {G001:'#81e5c4',G002:'#f2b978',G003:'#91b1ff'};
-  const defaults = {view:'nebula',scale:'log',bubbleScale:'uniform',speed:1,low:false,zoom:1,bubbleZoom:1,angle:0};
+  const defaults = {view:'nebula',scale:'log',bubbleScale:'log',speed:1,low:false,zoom:1,bubbleZoom:1,angle:0};
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(memory) || '{}') || {}; } catch {}
   const options = {...defaults};
@@ -231,7 +231,12 @@ function startGoalAtlas() {
     const ease=media.matches||!transition?1:Math.min(1,(time-transition)/320);
     const motion=1-Math.pow(1-Math.max(0,ease),3);
     const cx=width/2,cy=height/2;
-    const valueFor=id=>recordsById.has(id)?recordsById.get(id)[amountMode.value]:(amountMode.value==='budget'?nodes.get(id)?.budget:null);
+    const valueFor=id=>{
+      if(recordsById.has(id))return recordsById.get(id)[amountMode.value];
+      if(amountMode.value!=='budget')return null;
+      if(id==='G001')return recordsById.get('G001-01')?.budget;
+      return nodes.get(id)?.budget;
+    };
     const localMax=Math.max(0,...children.map(id=>valueFor(id)??0));
     const marks=[{id:center,x:cx,y:cy,r:Math.min(48,width*0.12),row:recordsById.get(center)}];
     children.forEach((id,index)=>{
@@ -305,7 +310,7 @@ function startGoalAtlas() {
       const forced=mark.id===selection||mark.id===hovered;
       const name=nodes.get(mark.id)?.name||mark.id;
       const caption=(mark.row?.resolved?'✓ ':'')+(name.length>14?name.slice(0,14)+'…':name);
-      const value=mark.row?budgetText(mark.row[amountMode.value]):('amount' in mark?budgetText(mark.amount):'');
+      const value=mark.row?budgetText(mark.row[amountMode.value]):('amount' in mark?(nodes.get(mark.id)?.categoryNode&&AtlasGeometry.known(mark.amount)?'分类口径 · ':'')+budgetText(mark.amount):'');
       const widthText=Math.max(ctx.measureText(caption).width,ctx.measureText(value).width)+10;
       const heightText=value?32:17;
       const x=Math.max(0,Math.min(width-widthText,mark.x-widthText/2));
