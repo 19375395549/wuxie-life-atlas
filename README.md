@@ -65,9 +65,8 @@ GitHub 仓库 → Settings → Secrets and variables → Actions → New reposit
 - https://developers.cloudflare.com/pages/functions/advanced-mode/
 
 ## 产品需求文档
-- [层级编辑需求](层级编辑需求.md) 记录目标树和痛点金字塔的多级编辑范围。
 
-- [PRD V1.0（Markdown）](PRD.md) 用于日常编辑和 Git 差异审阅。
+- [PRD V1.0（Markdown）](PRD.md) 用于日常编辑和 Git 差异审阅，包含已确认的多级分类编辑需求。
 - [PRD V1.0（Word）](PRD.docx) 保留收到的原始版本。
 
 PRD V1.0 记录的是编写时的状态，其中的生产版本和部署待办属于历史记录。后续发布新版 PRD 时，同步更新对应的 Word 版本和此处的链接。
