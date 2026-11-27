@@ -367,9 +367,12 @@ async function api(request,env,url){
 }
 export default {
   async fetch(request,env,ctx){
-    const publicAssets = new Set(['/needs.js', '/needs-ui.js', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
+    const publicAssets = new Set(['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
     const url=new URL(request.url);
     const path=url.pathname;
+    if ((path==='/view/needs.js'||path==='/view/needs-ui.js')&&['GET','HEAD'].includes(request.method)&&env.ASSETS){
+      return withHeaders(await env.ASSETS.fetch(new Request(new URL(path.slice('/view'.length),url),request)));
+    }
     if (path==='/view' || path==='/view/' || path==='/view/state') {
       if (!['GET','HEAD'].includes(request.method)) {
         return withHeaders(new Response(null,{status:405,headers:{Allow:'GET, HEAD'}}));
