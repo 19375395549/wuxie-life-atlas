@@ -1,4 +1,9 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>无邪人生目标树 · V2.0.3｜Notion双向同步版</title><style>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>无邪人生目标树 · V2.0.3｜Notion双向同步版</title><script>
+const readOnlyView = location.pathname === '/view/';
+if (readOnlyView) document.documentElement.dataset.readOnly = '';
+</script><style>
+:root:not([data-read-only]) .public-only,
+[data-read-only] :is(#entry-actions,#run-status,#goal-entry,#pain-entry,#record-editor,#entry,.map-add,#importer,#exporter,.editor-only) {display:none!important}
 *{box-sizing:border-box}body{margin:0;background:#0b111b;color:#e5edf6;font:15px/1.65 system-ui,'Microsoft YaHei',sans-serif}main{max-width:1520px;margin:auto;padding:22px clamp(14px,3vw,48px) 40px}header,.row,nav,.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}header{justify-content:space-between;border-bottom:1px solid #263345;padding-bottom:16px}b,section strong{color:#fff}small,.dim,label,p{color:#a2b1c4}.eyebrow,small,code{font:11px/1.5 ui-monospace,Consolas,monospace;letter-spacing:1.4px}.eyebrow{color:#83e3cf}h1{font-size:clamp(28px,4vw,48px);letter-spacing:-2px;margin:16px 0 0}h2,h3,p{margin:5px 0 12px}button,input,select{font:inherit;color:inherit;background:#182333;border:1px solid #344355;border-radius:8px;padding:6px 11px}button{cursor:pointer}button:hover,button:focus-visible,a:focus-visible{border-color:#78dac2;outline:1px solid #78dac2}a{color:#9ae8d1}.active,button.primary{background:#a7ead7;color:#102a24;border-color:#a7ead7}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}.box,.stage,aside,.panel{border:1px solid #283547;border-radius:14px;background:#111b28}.box{padding:14px 18px}.box strong{display:block;font-size:clamp(18px,2.3vw,32px);font-variant-numeric:tabular-nums}.box span{font-size:12px;color:#9aaabd}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(270px,30%);gap:14px}.stage{position:relative;overflow:hidden;display:flex;flex-direction:column;background:radial-gradient(ellipse at 48% 54%,#19323b 0,#121e2c 42%,#0e1723 75%)}.toolbar{padding:12px 14px;border-bottom:1px solid #273444}.toolbar button,.tools button{font-size:13px}.tools{display:flex;gap:6px;flex-wrap:wrap}#scene{position:relative;height:clamp(380px,49vh,640px);min-width:0}canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}.caption{margin-top:auto;padding:8px 16px;color:#98acbd;font-size:12px;border-top:1px solid #293749}aside{padding:20px;min-width:0}#children{display:grid;gap:5px;max-height:235px;overflow:auto}#children button,.item{display:flex;text-align:left;justify-content:space-between;align-items:center;gap:8px}label{display:block;font-size:13px}#actual{width:100%;margin:6px 0 9px}.panel{padding:18px 20px;margin-top:15px}.register{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:8px;margin-top:12px;max-height:330px;overflow:auto}.item{padding:10px 12px}.item code{color:#7ed7c0}.item small{letter-spacing:0}.row.between{justify-content:space-between}.bar{height:7px;border-radius:8px;background:#293649;overflow:hidden;margin:8px 0 15px}.bar i{display:block;background:#81d7bd;height:100%}footer{margin-top:16px;color:#9caec2;font-size:12px}.amount{font-size:clamp(22px,3vw,36px);color:#a7ead7;font-weight:700}.panel input[type=number]{width:140px}#msg{color:#f2c382}details summary{cursor:pointer;font-weight:700}button:disabled{opacity:.5;cursor:default} @media(max-width:800px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.box{padding:10px 14px}aside{padding:16px}#scene{height:380px}} @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 
 /* V1.8：痛点金字塔与可扩展登记 */
@@ -31,7 +36,7 @@
 #record-editor .danger{color:#ffb5b5;border-color:#9a525a}
 </style><link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#080d16">
-</head><body><main><header><div class="row"><span class="eyebrow">◈ &nbsp; WUXIE / LIFE ATLAS</span><b>人生规划控制台</b></div><small>V2.0.3 &nbsp; / &nbsp; Notion双向同步</small></header><div id="cloud-state" class="cloud-state wait" role="status" aria-live="polite">正在验证 Cloudflare Access 身份并连接 Notion 数据库……</div>
+</head><body><main><header><div class="row"><span class="eyebrow">◈ &nbsp; WUXIE / LIFE ATLAS</span><b>人生规划控制台</b></div><small class="editor-only">V2.0.3 &nbsp; / &nbsp; Notion双向同步</small><small class="public-only">公开查看</small></header><div id="cloud-state" class="cloud-state wait" role="status" aria-live="polite">正在验证 Cloudflare Access 身份并连接 Notion 数据库……</div>
 <div id="cloud-sync-tools" class="row" style="gap:10px;margin:9px 0 14px;align-items:center;flex-wrap:wrap">
  <button type="button" id="sync-notion-now" class="primary" aria-label="从 Notion 读取最新数据">↻ 从 Notion 刷新</button>
  <span id="cloud-sync-time" class="dim" style="font-size:12px" role="status" aria-live="polite">尚未完成云端读取</span>
@@ -54,7 +59,7 @@
 <label>目标预算/金额（元，可不填）<input id="new-goal-budget" type="number" min="0" step="0.01" placeholder="待确认"></label>
 <label>说明（选填）<input id="new-goal-note" maxlength="250" placeholder="数量、周期或交付条件"></label>
 <button class="primary" type="button" id="confirm-goal-add">确认登记新目标</button></form><div class="entry-error" id="goal-entry-feedback" role="status" aria-live="polite"></div>
-<p class="tiny">点击登记簿中的条目可修改或删除。金额留空表示「待确认」。</p><p class="entry-feedback-info">若按钮点击后没有任何反馈：若无法登记，请查看网页顶部的云端连接状态；本版必须在线登录才能写入 Notion。</p></details></details></section><section class="panel"><details><summary>60 年资金推演 <small>　SCENARIO LAB</small></summary><p>修改月薪会更新顶部收入假设和本次推演。新增目标金额计入推演；未定预算不计入。</p><label>假设税后月薪（元） <input id="salary" type="number" min="0" step="100" value="15000"></label><p id="scenario"></p><small>固定工资 × 720 个月；不计起始现金、通胀、收益、退休变化或未登记支出。均摊不代表实际购买能力。</small></details></section><footer class="row between"><div>当前正式源码 V2.0.3（基于已上线 V2.0.2）　｜　所有金额为人民币；Notion 是唯一云端数据源；原有历史不删除</div><div class="tools"><button id="exporter">导出全部登记</button><button id="importer">导入备份</button><input type="file" id="file" accept=".json" hidden></div></footer><div id="msg" role="status"></div></main>
+<p class="tiny">点击登记簿中的条目可修改或删除。金额留空表示「待确认」。</p><p class="entry-feedback-info">若按钮点击后没有任何反馈：若无法登记，请查看网页顶部的云端连接状态；本版必须在线登录才能写入 Notion。</p></details></details></section><section class="panel"><details><summary>60 年资金推演 <small>　SCENARIO LAB</small></summary><p>修改月薪会更新顶部收入假设和本次推演。新增目标金额计入推演；未定预算不计入。</p><label>假设税后月薪（元） <input id="salary" type="number" min="0" step="100" value="15000"></label><p id="scenario"></p><small>固定工资 × 720 个月；不计起始现金、通胀、收益、退休变化或未登记支出。均摊不代表实际购买能力。</small></details></section><footer class="row between"><div>当前正式源码 V2.0.3（基于已上线 V2.0.2）　｜　所有金额为人民币；Notion 是唯一云端数据源；原有历史不删除</div><div class="tools"><button id="exporter">导出全部登记</button><button id="importer">导入备份</button><a class="public-only" href="/">管理入口 · 需要登录</a><input type="file" id="file" accept=".json" hidden></div></footer><div id="msg" role="status"></div></main>
 <dialog id="record-editor" aria-labelledby="record-title">
  <form id="record-form">
   <h2 id="record-title"></h2>
@@ -76,7 +81,7 @@ add('G001-01','现金财富增长','G001',1e9,'1,000 元是规划起点，不是
 add('A','食品、服饰及温饱保障','G002',1e6,'P0 第一优先级。饮食与服饰 ¥837,000 已计入消费；另预留 ¥163,000，不是第 27 项消费，也不代表实际存款。');add('B','房产、交通及数码设备','G002',6668000,'7 项消费预算；购置、维护与换新均按原版假设。');add('C','健康与运动','G002',144000,'健身卡按年付均摊。');add('D','AI、办公软件及数字服务','G002',519716,'16 项。美元按原版参考汇率 6.6611 折算，沿用原登记金额，不是现价。');
 const expenses=[['别墅',4200000,'购置 300 万元，维护 2 万元/年'],['特斯拉',2100000,'25 万元/辆，每 10 年更换，维护 1 万元/年'],['台式电脑',80000,'8,000 元，每 6 年更换'],['笔记本电脑',72000,'6,000 元，每 5 年更换'],['平板电脑',36000,'3,000 元，每 5 年更换'],['国际版苹果手机',90000,'6,000 元，每 4 年更换'],['谷歌AI手机',90000,'6,000 元，每 4 年更换'],['饮食',657000,'P0 · 30 元/天，以每年 365 天计算'],['服饰',180000,'P0 · 3,000 元/年（暂估）'],['健身卡',144000,'2,400 元/年'],['ChatGPT Plus',95920,'20 美元/月'],['Notion 商业版',95920,'20 美元/月'],['Runway会员',57552,'12 美元/月'],['剪映 SVIP',42480,'59 元/月'],['Claude Pro',79933,'200 美元/年'],['Gemini Plus',47912,'9.99 美元/月'],['小卡健康永久会员',99,'一次性价格 99 元'],['一刻相册',6480,'108 元/年'],['百度网盘',17880,'298 元/年'],['夸克网盘',18000,'300 元/年'],['阿里云盘',11880,'198 元/年'],['123云盘',12180,'203 元/年'],['Google云盘',0,'假设已含于套餐，非确认永久免费'],['OneDrive',0,'假设已含于套餐，非确认永久免费'],['Office家庭版',29880,'498 元/年'],['VPN会员',3600,'15 元/3个月']];expenses.forEach(([name,budget,note],index)=>add('G002-'+String(index+1).padStart(2,'0'),name,index<7?'B':index<9?'A':index===9?'C':'D',budget,note+'。金额按 V1.7 规划口径，未核实部分为暂估。','累计实际支出'));
 ['加密货币','黄金','美股'].forEach((name,index)=>add('G003-0'+(index+1),name,'G003',10000,'本金目标；不计收益，不并入消费预算。','实际投入本金'));
-const key='wuxie-goal-twin-v17-actuals',valid=(id,amount)=>nodes.get(id)?.measure&&Number.isFinite(amount)&&amount>=0&&amount<=Number.MAX_SAFE_INTEGER/100;let records={},focus=root,selected=root,yaw=0,pitch=.13,zoom=1,hits=[];try{const stored=JSON.parse(localStorage.getItem(key)||'{}');for(const [id,value] of Object.entries(stored))if(valid(id,value))records[id]=value}catch{el('msg').textContent='浏览器存储不可用或无法读取旧记录，请使用备份。'}
+const key='wuxie-goal-twin-v17-actuals',valid=(id,amount)=>nodes.get(id)?.measure&&Number.isFinite(amount)&&amount>=0&&amount<=Number.MAX_SAFE_INTEGER/100;let records={},focus=root,selected=root,yaw=0,pitch=.13,zoom=1,hits=[];try{if(!readOnlyView){const stored=JSON.parse(localStorage.getItem(key)||'{}');for(const [id,value] of Object.entries(stored))if(valid(id,value))records[id]=value}}catch{el('msg').textContent='浏览器存储不可用或无法读取旧记录，请使用备份。'}
 function save(){try{localStorage.setItem(key,JSON.stringify(records));el('msg').textContent='实际记录已保存在当前浏览器。'}catch{el('msg').textContent='无法持久保存，请在关闭前导出实际记录。'}refresh()}
 function route(id){selected=nodes.get(id);focus=selected.children.length?selected:nodes.get(selected.parent);yaw=0;pitch=.13;zoom=1;refresh()}
 function activateGoal(id){
@@ -84,7 +89,7 @@ function activateGoal(id){
  openRecordEditor('goals',id);
 }
 function button(name,handler){const newButton=document.createElement('button');newButton.textContent=name;newButton.onclick=handler;return newButton}
-function detail(){const n=selected, actual=records[n.id],crumb=[];let ancestor=n;while(ancestor){crumb.unshift(ancestor.name);ancestor=nodes.get(ancestor.parent)}const side=el('detail');side.innerHTML=`<small class="eyebrow">NODE INSPECTOR　/　${n.id}</small><h2>${esc(n.name)}</h2><small class="dim">${esc(crumb.join(' › '))}</small><p>${esc(n.note)}</p>`;if(n.budget!=null)side.innerHTML+=`<label>${n.id==='A'?'含备用金的保障目标':n.id.startsWith('G002')||['B','C','D'].includes(n.id)?'60 年消费预算':n.id.startsWith('M')?'现金阶段门槛':'目标金额'}</label><div class="amount">${money(n.budget)}</div>`;if(n.measure){const comparison=actual===undefined?'尚无实际记录':n.budget===0?(actual===0?'已记录零支出':'已发生套餐外支出'):n.id.startsWith('G002')?'预算使用率 '+(actual/n.budget*100).toFixed(1)+'%（不是完成率）':'目标达成比例 '+(actual/n.budget*100).toFixed(2)+'%';side.innerHTML+=`<p>${comparison}</p><form id="entry"><label>${n.measure}（元）<input id="actual" type="number" min="0" max="90071992547409" step="0.01" required placeholder="待确认" value="${actual??''}"></label><button class="primary">保存实际值</button> <button type="button" id="unset" ${actual===undefined?'disabled':''}>撤回为待确认</button></form>`;el('entry').onsubmit=event=>{event.preventDefault();const value=el('actual').valueAsNumber;if(valid(n.id,value)){records[n.id]=value;save()}};el('unset').onclick=()=>{delete records[n.id];save()}}
+function detail(){const n=selected, actual=records[n.id],crumb=[];let ancestor=n;while(ancestor){crumb.unshift(ancestor.name);ancestor=nodes.get(ancestor.parent)}const side=el('detail');side.innerHTML=`<small class="eyebrow">NODE INSPECTOR　/　${n.id}</small><h2>${esc(n.name)}</h2><small class="dim">${esc(crumb.join(' › '))}</small><p>${esc(n.note)}</p>`;if(n.budget!=null)side.innerHTML+=`<label>${n.id==='A'?'含备用金的保障目标':n.id.startsWith('G002')||['B','C','D'].includes(n.id)?'60 年消费预算':n.id.startsWith('M')?'现金阶段门槛':'目标金额'}</label><div class="amount">${money(n.budget)}</div>`;if(n.measure){const comparison=actual===undefined?'尚无实际记录':n.budget===0?(actual===0?'已记录零支出':'已发生套餐外支出'):n.id.startsWith('G002')?'预算使用率 '+(actual/n.budget*100).toFixed(1)+'%（不是完成率）':'目标达成比例 '+(actual/n.budget*100).toFixed(2)+'%';side.innerHTML+=`<p>${comparison}${readOnlyView&&actual!==undefined?' · 实际金额 '+money(actual):''}</p><form id="entry"><label>${n.measure}（元）<input id="actual" type="number" min="0" max="90071992547409" step="0.01" required placeholder="待确认" value="${actual??''}"></label><button class="primary">保存实际值</button> <button type="button" id="unset" ${actual===undefined?'disabled':''}>撤回为待确认</button></form>`;el('entry').onsubmit=event=>{event.preventDefault();const value=el('actual').valueAsNumber;if(valid(n.id,value)){records[n.id]=value;save()}};el('unset').onclick=()=>{delete records[n.id];save()}}
 if(n.id.startsWith('M')){const balance=records['G001-01'];side.insertAdjacentHTML('beforeend',`<p>实际状态：${balance===undefined?'待确认':balance>=n.budget?'已达门槛':'未达门槛'}</p>`)}if(n.children.length){side.insertAdjacentHTML('beforeend',`<h3>下一级 <small> / ${n.children.length}</small></h3><div id="children"></div>`);n.children.forEach(child=>el('children').append(button(child.id+'　'+child.name+'　›',()=>activateGoal(child.id))))}el('back').disabled=!n.parent}
 function register(){const query=el('q').value.trim().toLowerCase();const matches=goals.filter(n=>(!el('filter').value||(n.branch??n.id.slice(0,4))===el('filter').value)&&(n.id+n.name).toLowerCase().includes(query));el('matches').textContent=matches.length+' 项';el('register').replaceChildren(...matches.map(n=>{const item=button('',()=>activateGoal(n.id));item.className='item';item.innerHTML=`<span><code>${n.id.length===36?'未编号':n.id}</code><br>${esc(n.name)}</span><small>${records[n.id]===undefined?'待确认':money(records[n.id])}</small>`;return item}));if(!matches.length)el('register').textContent='没有匹配的目标。'}
 function refresh(){el('count').textContent=Object.keys(records).length+' / '+goals.length;detail();register();draw()}
@@ -99,11 +104,11 @@ let drag=null;canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);dra
 <script>
 /* V1.8 增量扩展：保留 V1.7 已有目标数据与实际值，新增目标、痛点及关系独立保存。 */
 const goalsKey='wuxie-goal-twin-v18-goals', painsKey='wuxie-goal-twin-v18-pains', linksKey='wuxie-goal-twin-v18-links';
-function loadJson(key,fallback){try{const parsed=JSON.parse(localStorage.getItem(key)||'null');return parsed??fallback}catch{return fallback}}
+function loadJson(key,fallback){if(readOnlyView)return fallback;try{const parsed=JSON.parse(localStorage.getItem(key)||'null');return parsed??fallback}catch{return fallback}}
 let storageReady=false;
 function setSaveState(){const indicator=el('save-state');if(indicator){indicator.textContent=storageReady?'本机自动保存已启用':'浏览器禁止本地保存：请导出备份';indicator.classList.toggle('warn',!storageReady)}}
-try{const testKey='wuxie-v181-storage-test';localStorage.setItem(testKey,'1');storageReady=localStorage.getItem(testKey)==='1';localStorage.removeItem(testKey)}catch{storageReady=false}
-function persistV18(key,data){try{localStorage.setItem(key,JSON.stringify(data));storageReady=true;setSaveState();return true}catch{storageReady=false;setSaveState();el('msg').textContent='本地存储被阻止：本次内容仅保存在当前打开的页面中。请立即点击「导出全部登记」保存备份，或下载 HTML 后用 Chrome 打开。';return false}}
+if(!readOnlyView)try{const testKey='wuxie-v181-storage-test';localStorage.setItem(testKey,'1');storageReady=localStorage.getItem(testKey)==='1';localStorage.removeItem(testKey)}catch{storageReady=false}
+function persistV18(key,data){if(readOnlyView)return false;try{localStorage.setItem(key,JSON.stringify(data));storageReady=true;setSaveState();return true}catch{storageReady=false;setSaveState();el('msg').textContent='本地存储被阻止：本次内容仅保存在当前打开的页面中。请立即点击「导出全部登记」保存备份，或下载 HTML 后用 Chrome 打开。';return false}}
 const originalBudget=8168716, originalInvestment=30000;
 let customGoals=loadJson(goalsKey,[]);if(!Array.isArray(customGoals))customGoals=[];
 customGoals=customGoals.filter(x=>x&&/^G00[123]-\d{2,}$/.test(x.id)&&typeof x.name==='string'&&x.name.trim()&&['G001','G002','G003'].includes(x.parent)&&!nodes.has(x.id)&&x.name.length<=100);
@@ -237,6 +242,10 @@ function blockActions(block){
  for(const id of ['confirm-goal-add','confirm-pain-add','pain-link']){const b=el(id);if(b)b.disabled=block}
 }
 async function cloudApi(path,method='GET',body){
+ if(readOnlyView){
+   if(method!=='GET'||path!=='/api/state')throw Error('公开页面仅供查看。');
+   path='/view/state';
+ }
  const opts={method,credentials:'same-origin',cache:'no-store',headers:{'Accept':'application/json'}};
  if(body!==undefined){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body)}
  let response;
@@ -417,6 +426,7 @@ el('file').onchange=async()=>{
 const recordEditor=el('record-editor');
 el('record-close').onclick=()=>recordEditor.close();
 function openRecordEditor(kind,id){
+ if(readOnlyView)return;
  const item=cloudSnapshot?.[kind].find(row=>row.id===id);
  if(!item||recordEditor.open)return;
  if(!cloudReady||cloudBusy){
@@ -527,6 +537,6 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('focus',()=>syncFromNotion('focus'));
 window.addEventListener('pageshow',event=>{if(event.persisted)syncFromNotion('pageshow')});
 setInterval(()=>syncFromNotion('periodic'),60000);
-cloudStatus('正在连接 Notion 数据库……','wait');
+cloudStatus(readOnlyView?'正在读取公开目标数据……':'正在连接 Notion 数据库……','wait');
 syncFromNotion('startup');
 </script></body></html>

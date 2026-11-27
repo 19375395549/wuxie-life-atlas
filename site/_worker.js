@@ -205,14 +205,32 @@ async function api(request,env,url){
 }
 export default {
   async fetch(request,env,ctx){
-    const publicAssets = new Set(['/view/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
-    const path = new URL(request.url).pathname;
+    const publicAssets = new Set(['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
+    const url=new URL(request.url);
+    const path=url.pathname;
+    if (path==='/view' || path==='/view/' || path==='/view/state') {
+      if (!['GET','HEAD'].includes(request.method)) {
+        return withHeaders(new Response(null,{status:405,headers:{Allow:'GET, HEAD'}}));
+      }
+      if (path==='/view') return withHeaders(Response.redirect(new URL('/view/',url),308));
+      if (path==='/view/') {
+        if (!env.ASSETS) return withHeaders(fail('网页资源暂不可用',503));
+        return withHeaders(await env.ASSETS.fetch(new Request(new URL('/',url),request)));
+      }
+      try {
+        const {goals,pains,...snapshot}=await state(env);
+        const withoutPageId=({pageId,...record})=>record;
+        const response=json({...snapshot,goals:goals.map(withoutPageId),pains:pains.map(withoutPageId)});
+        return withHeaders(request.method==='HEAD'?new Response(null,{headers:response.headers}):response);
+      } catch {
+        return withHeaders(fail('暂时无法读取目标数据，请稍后再试',503));
+      }
+    }
     if (publicAssets.has(path) && ['GET', 'HEAD'].includes(request.method) && env.ASSETS) {
       return withHeaders(await env.ASSETS.fetch(request));
     }
     const auth=await checkAccess(request,env);
     if(auth.error){const response=fail(auth.error,auth.code);return withHeaders(response);}
-    const url=new URL(request.url);
     if(url.pathname.startsWith('/api/'))return withHeaders(await api(request,env,url));
     if(request.method!=='GET'&&request.method!=='HEAD')return withHeaders(fail('仅允许读取网页资源',405));
     if(!env.ASSETS||typeof env.ASSETS.fetch!=='function')return withHeaders(fail('Cloudflare Pages 资源绑定未配置',503));
