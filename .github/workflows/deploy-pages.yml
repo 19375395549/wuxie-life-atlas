@@ -54,7 +54,7 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' &&
       ((github.event_name == 'workflow_dispatch' && inputs.target == 'production') ||
-       (github.event_name == 'push' && vars.AUTO_DEPLOY_PRODUCTION == 'true'))
+       (github.event_name == 'push' && vars.AUTO_DEPLOY_PRODUCTION != 'false'))
     runs-on: ubuntu-latest
     environment: production
     steps:

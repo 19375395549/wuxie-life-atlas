@@ -6,13 +6,13 @@
 
 - `site/`：**唯一需要部署到 Cloudflare Pages 的目录**；`_worker.js` 是唯一提供 Notion API 和 Access 身份检查的服务端脚本。
 - `scripts/validate.mjs`：代码与安全配置静态检查，无任何生产 API 写入。
-- `.github/workflows/deploy-pages.yml`：通过验收并启用自动发布后，推送到 `main` 自动检查并用 Wrangler 上传 `site/` 到**既有的** `wuxie-life-atlas` Pages 项目；Pull Request 仅检查不部署。
+- `.github/workflows/deploy-pages.yml`：推送到 `main` 自动检查并用 Wrangler 上传 `site/` 到**既有的** `wuxie-life-atlas` Pages 项目；Pull Request 仅检查不部署。
 
 ## 必须遵守的原则
 
 1. Notion 是唯一业务数据库；网页不另外创建数据库、不删除历史、不迁移既有 Notion 数据源。
 2. **不要将 `NOTION_TOKEN`、Cloudflare Access 配置密钥或其他私钥写入仓库。** 旧的 Cloudflare Pages 项目环境变量应继续使用原值，无须更改数据库 ID。
-3. GitHub 仓库必须设置为 **Private**，不要上传旧版本包。
+3. GitHub 仓库公开可读，推送权限仅授予所有者及受其授权的集成，不要上传旧版本包。
 4. GitHub Actions 部署后仍需登录 Cloudflare Access，人工核对目标预算、卡片增删改和反向同步。部署不会自动在 Notion 修改任何业务数据。
 5. V2.0.2 当前生产网站**在首次自动部署验收前不得删除**，以便必要时在 Cloudflare 中回滚生产部署。
 
@@ -36,7 +36,7 @@ GitHub 仓库 → Settings → Secrets and variables → Actions → New reposit
 **不要改动或泄漏既有 Pages 环境变量**：
 `NOTION_TOKEN`, `NOTION_GOALS_SOURCE_ID`, `NOTION_PAINS_SOURCE_ID`, `CF_ACCESS_AUD`, `CF_ACCESS_TEAM_DOMAIN`, `ALLOWED_EMAIL`。
 
-仓库 GitHub Actions → **无邪人生目标树 - 验证与自动部署** → Run workflow → 选择 `main` 和 `preview`。预览通过后手动运行 `production`，验收成功后将仓库 Actions 变量 `AUTO_DEPLOY_PRODUCTION` 设为 `true`，启用后续 main 推送自动发布。
+仓库 GitHub Actions → **无邪人生目标树 - 验证与自动部署** → Run workflow → 选择 `main` 和 `preview`。预览通过后手动运行 `production`，main 推送默认自动发布。需要临时暂停推送发布时，将仓库 Actions 变量 `AUTO_DEPLOY_PRODUCTION` 设为 `false`。
 
 ## 生产发布前的三项核对
 
