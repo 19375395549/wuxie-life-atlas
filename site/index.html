@@ -57,6 +57,19 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
 #needs-queue li[draggable="true"]{cursor:grab}
 .needs-record{margin-top:12px;padding-top:12px;border-top:1px solid #2c4455}
 .needs-record ul{padding-left:20px}
+[hidden]{display:none!important}
+.atlas-tools{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start}
+.atlas-tools label{display:inline-flex;gap:5px;align-items:center;min-width:0}
+.atlas-tools input[type=search]{width:min(156px,35vw)}
+.atlas-tools button[aria-pressed=true]{border-color:#81e5c4;color:#b9ffeb}
+.atlas-layout.detail-collapsed{grid-template-columns:minmax(0,1fr)}
+.atlas-layout.detail-collapsed #detail{display:none}
+#scene{position:relative;min-width:0}
+#scene canvas{touch-action:none}
+#atlas-hover{position:absolute;left:12px;bottom:12px;max-width:calc(100% - 24px);padding:6px 10px;background:#0a1826e8;border:1px solid #385a72;border-radius:8px;pointer-events:none}
+#atlas-layout:fullscreen{overflow:auto;background:#0b111b;padding:12px;align-items:start}
+#atlas-layout:fullscreen #scene{height:calc(100vh - 230px);min-height:320px}
+#atlas-accessible{max-width:min(220px,45vw)}
 </style><link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#080d16">
 </head><body><main><header><div class="row"><span class="eyebrow">◈ &nbsp; WUXIE / LIFE ATLAS</span><b>人生规划控制台</b></div><small class="editor-only">V3.0 &nbsp; / &nbsp; Notion双向同步</small><small class="public-only">公开查看</small></header><div id="cloud-state" class="cloud-state wait" role="status" aria-live="polite">正在验证 Cloudflare Access 身份并连接 Notion 数据库……</div>
@@ -97,7 +110,41 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
   <div class="subheader"><div class="row between"><b>痛点登记簿</b><small id="pain-matches"></small></div><div class="row"><input id="pain-q" placeholder="搜索痛点编号、名称或对应目标" aria-label="搜索痛点"><button id="clear-pain-filter">清除筛选</button></div><div id="pain-register" class="pain-register"></div></div>
   <details id="pain-entry" data-entry><summary>＋ 继续登记痛点</summary><form id="pain-add-form" class="form-grid" novalidate><label>痛点名称<input id="new-pain-name" required maxlength="100" placeholder="填写真实需要解决的问题"></label><label>暂定层级<select id="new-pain-tier"><option value="L0">P0 生存保障</option><option value="L1">P1 经济与职业安全</option><option value="L2">P2 健康与生活</option><option value="L3">P3 资源与跨境能力</option><option value="L4">P4 情感与关系</option><option value="L5">P5 发展与商业</option></select></label><label>补充说明（选填）<input id="new-pain-note" maxlength="230" placeholder="具体场景、影响等"></label><button class="primary" type="button" id="confirm-pain-add">确认登记痛点</button></form><div class="entry-error" id="pain-entry-feedback" role="status" aria-live="polite"></div></details>
 </section>
-<div class="layout"><section class="stage"><div class="toolbar"><b>目标星图</b><button id="home">总览</button><button id="goal-category-add" class="editor-only" type="button">新增分类</button><button id="back">上一级</button><div class="tools"><button id="minus" aria-label="缩小">−</button><button id="plus" aria-label="放大">＋</button><button id="reset">复位视角</button><button id="toggle-orbit" type="button">暂停旋转</button></div></div><div id="scene"><canvas aria-label="三维目标树，可用右侧节点列表浏览相同内容"></canvas></div><div class="caption">拖动旋转 · 滚轮缩放 · 点击节点进入下一层　｜　大小和距离不代表金额</div></section><aside id="detail"></aside></div>
+<div class="layout atlas-layout" id="atlas-layout">
+<section class="stage" id="atlas-stage">
+ <div class="toolbar atlas-tools">
+  <b>目标星图</b>
+  <button id="atlas-nebula" type="button" aria-pressed="true">星云视图</button>
+  <button id="atlas-bubble" type="button" aria-pressed="false">333 泡泡视图</button>
+  <button id="atlas-full" type="button">全屏</button>
+  <button id="atlas-detail-toggle" type="button" aria-expanded="true">折叠详情</button>
+ </div>
+ <div class="toolbar atlas-tools">
+  <label>搜索目标 <input id="atlas-search" type="search" placeholder="名称或编号"></label>
+  <button id="atlas-locate" type="button">定位</button>
+  <label>所属类别 <select id="atlas-category"><option value="">全部</option><option value="G001">现金财富</option><option value="G002">生活消费</option><option value="G003">投资本金</option></select></label>
+  <label>需求等级 <select id="atlas-need"><option value="">常用等级</option><option value="all">包括 P2</option><option value="P0">P0 刚需</option><option value="P1">P1 软需</option><option value="P2">P2 无需</option></select></label>
+  <label>比较口径 <select id="atlas-amount"><option value="budget">目标预算</option><option value="cost">剩余所需</option><option value="allocated">已配置资金</option></select></label>
+  <label>大小 <select id="atlas-scale"><option value="log">对数</option><option value="area">面积比例</option><option value="uniform">统一</option></select></label>
+ </div>
+ <div class="toolbar atlas-tools" id="atlas-animation">
+  <button id="toggle-orbit" type="button">暂停旋转</button>
+  <label>转速 <select id="atlas-speed"><option value="0.5">半速</option><option value="1">标准</option><option value="2">双倍</option></select></label>
+  <label><input id="atlas-low" type="checkbox"> 节能</label>
+  <button id="reset" type="button">复位视角</button>
+ </div>
+ <div class="toolbar atlas-tools" id="atlas-navigation" hidden>
+  <button id="home" type="button">根节点</button><button id="back" type="button">上一级</button>
+  <span id="atlas-crumb" class="row"></span>
+  <button id="atlas-prev" type="button">上一组</button><button id="atlas-next" type="button">下一组</button>
+  <button id="goal-category-add" class="editor-only" type="button">新增分类</button>
+ </div>
+ <div id="scene"><canvas aria-label="目标可视化，可用下方列表选择目标"></canvas><output id="atlas-hover" hidden></output></div>
+ <div class="toolbar atlas-tools"><button id="minus" type="button" aria-label="缩小">−</button><button id="plus" type="button" aria-label="放大">＋</button>
+  <label>可见节点 <select id="atlas-accessible"></select></label><span id="atlas-status" role="status"></span>
+ </div>
+ <div class="caption">青绿：现金财富 · 金色：生活消费 · 蓝色：投资本金。预算口径分列，星云图不汇总不同类型的金额。</div>
+</section><aside id="detail"></aside></div>
 <section class="panel"><details open><summary>目标登记簿 <small id="goal-count-note">　GOAL INDEX / 30</small></summary><div class="row"><input id="q" aria-label="搜索目标" placeholder="搜索编号或目标名称"><select id="filter" aria-label="按分支筛选"><option value="">全部分支</option><option>G001</option><option>G002</option><option>G003</option></select><small id="matches"></small></div><div id="register" class="register"></div>
 <details class="subheader" id="goal-entry" data-entry><summary>＋ 新增目标（保留原编号，自动顺延）</summary>
 <form id="goal-add-form" class="form-grid" novalidate>
@@ -146,7 +193,7 @@ const expenses=[['别墅',4200000,'购置 300 万元，维护 2 万元/年'],['�
 ['加密货币','黄金','美股'].forEach((name,index)=>add('G003-0'+(index+1),name,'G003',10000,'本金目标；不计收益，不并入消费预算。','实际投入本金'));
 const key='wuxie-goal-twin-v17-actuals',valid=(id,amount)=>nodes.get(id)?.measure&&Number.isFinite(amount)&&amount>=0&&amount<=Number.MAX_SAFE_INTEGER/100;let records={},focus=root,selected=root,yaw=0,pitch=.13,zoom=1,hits=[];try{if(!readOnlyView){const stored=JSON.parse(localStorage.getItem(key)||'{}');for(const [id,value] of Object.entries(stored))if(valid(id,value))records[id]=value}}catch{el('msg').textContent='浏览器存储不可用或无法读取旧记录，请使用备份。'}
 function save(){try{localStorage.setItem(key,JSON.stringify(records));el('msg').textContent='实际记录已保存在当前浏览器。'}catch{el('msg').textContent='无法持久保存，请在关闭前导出实际记录。'}refresh()}
-function route(id){selected=nodes.get(id);focus=selected.children.length?selected:nodes.get(selected.parent);yaw=0;pitch=.13;zoom=1;refresh()}
+function route(id){if(!nodes.has(id))return;selected=nodes.get(id);window.goalAtlas?.follow(id);refresh()}
 function activateGoal(id){
  route(id);
  if(id===root.id||cloudSnapshot?.hierarchy?.goals.some(node=>node.id===id))openCategoryEditor('goals',id===root.id?null:id);
@@ -154,44 +201,13 @@ function activateGoal(id){
 }
 function button(name,handler){const newButton=document.createElement('button');newButton.textContent=name;newButton.onclick=handler;return newButton}
 function detail(){const n=selected, actual=records[n.id],crumb=[];let ancestor=n;while(ancestor){crumb.unshift(ancestor.name);ancestor=nodes.get(ancestor.parent)}const side=el('detail');side.innerHTML=`<small class="eyebrow">NODE INSPECTOR　/　${n.id}</small><h2>${esc(n.name)}</h2><small class="dim">${esc(crumb.join(' › '))}</small><p>${esc(n.note)}</p>`;if(n.budget!=null)side.innerHTML+=`<label>${n.id==='A'?'含备用金的保障目标':n.id.startsWith('G002')||['B','C','D'].includes(n.id)?'60 年消费预算':n.id.startsWith('M')?'现金阶段门槛':'目标金额'}</label><div class="amount">${money(n.budget)}</div>`;if(n.measure){const comparison=actual===undefined?'尚无实际记录':n.budget===0?(actual===0?'已记录零支出':'已发生套餐外支出'):n.id.startsWith('G002')?'预算使用率 '+(actual/n.budget*100).toFixed(1)+'%（不是完成率）':'目标达成比例 '+(actual/n.budget*100).toFixed(2)+'%';side.innerHTML+=`<p>${comparison}${readOnlyView&&actual!==undefined?' · 实际金额 '+money(actual):''}</p><form id="entry"><label>${n.measure}（元）<input id="actual" type="number" min="0" max="90071992547409" step="0.01" required placeholder="待确认" value="${actual??''}"></label><button class="primary">保存实际值</button> <button type="button" id="unset" ${actual===undefined?'disabled':''}>撤回为待确认</button></form>`;el('entry').onsubmit=event=>{event.preventDefault();const value=el('actual').valueAsNumber;if(valid(n.id,value)){records[n.id]=value;save()}};el('unset').onclick=()=>{delete records[n.id];save()}}
-if(n.id.startsWith('M')){const balance=records['G001-01'];side.insertAdjacentHTML('beforeend',`<p>实际状态：${balance===undefined?'待确认':balance>=n.budget?'已达门槛':'未达门槛'}</p>`)}if(n.children.length){side.insertAdjacentHTML('beforeend',`<h3>下一级 <small> / ${n.children.length}</small></h3><div id="children"></div>`);n.children.forEach(child=>el('children').append(button(child.id+'　'+child.name+'　›',()=>activateGoal(child.id))))}el('back').disabled=!n.parent}
-function register(){const query=el('q').value.trim().toLowerCase();const matches=goals.filter(n=>(!el('filter').value||(n.branch??n.id.slice(0,4))===el('filter').value)&&(n.id+n.name).toLowerCase().includes(query));el('matches').textContent=matches.length+' 项';el('register').replaceChildren(...matches.map(n=>{const item=button('',()=>activateGoal(n.id));item.className='item';item.innerHTML=`<span><code>${n.id.length===36?'未编号':n.id}</code><br>${esc(n.name)}</span><small>${records[n.id]===undefined?'待确认':money(records[n.id])}</small>`;return item}));if(!matches.length)el('register').textContent='没有匹配的目标。'}
-function refresh(){el('count').textContent=Object.keys(records).length+' / '+goals.length;detail();register();draw()}
+if(n.id.startsWith('M')){const balance=records['G001-01'];side.insertAdjacentHTML('beforeend',`<p>实际状态：${balance===undefined?'待确认':balance>=n.budget?'已达门槛':'未达门槛'}</p>`)}if(n.children.length){side.insertAdjacentHTML('beforeend',`<h3>下一级 <small> / ${n.children.length}</small></h3><div id="children"></div>`);n.children.forEach(child=>el('children').append(button(child.id+'　'+child.name+'　›',()=>activateGoal(child.id))))}window.goalAtlas?.detail(side,n)}
+function register(){const query=el('q').value.trim().toLowerCase();const matches=goals.filter(n=>(!el('filter').value||(n.branch??n.id.slice(0,4))===el('filter').value)&&(n.id+n.name).toLowerCase().includes(query));el('matches').textContent=matches.length+' 项';el('register').replaceChildren(...matches.map(n=>{const item=button('',()=>activateGoal(n.id));item.className='item';item.innerHTML=`<span><code>${n.id.length===36?'未编号':n.id}</code><br>${esc(n.name)}${window.goalAtlas?' <small>'+esc(window.goalAtlas.level(n.id))+'</small>':''}</span><small>${records[n.id]===undefined?'待确认':money(records[n.id])}</small>`;return item}));if(!matches.length)el('register').textContent='没有匹配的目标。'}
+function refresh(){el('count').textContent=Object.keys(records).length+' / '+goals.length;draw();detail();register()}
 function simulate(){const salary=el('salary').valueAsNumber;el('scenario').textContent=Number.isFinite(salary)&&salary>=0?`每月仅扣消费后：${money(salary-8168716/720)}　｜　60 年扣除消费及投资本金后：${money(salary*720-8198716)}　｜　再预留温饱备用金后：${money(salary*720-8361716)}`:'请输入非负月薪。'}el('salary').oninput=simulate;simulate();el('filter').onchange=register;el('q').oninput=register;el('home').onclick=()=>route(root.id);el('back').onclick=()=>selected.parent&&route(selected.parent);
 el('exporter').onclick=()=>{const anchor=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({version:'V1.7',records},null,2)],{type:'application/json'}));anchor.href=url;anchor.download='无邪目标树-V1.7-实际记录.json';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),2000)};el('importer').onclick=()=>el('file').click();el('file').onchange=async()=>{try{const file=el('file').files[0];if(!file)return;if(file.size>100000)throw Error();const data=JSON.parse(await file.text());if(data.version!=='V1.7'||!data.records||typeof data.records!=='object'||Array.isArray(data.records)||Object.entries(data.records).some(([id,val])=>!valid(id,val)))throw Error();if(Object.keys(data.records).some(id=>id in records&&records[id]!==data.records[id])&&!confirm('备份含不同的实际值，要覆盖这些同编号记录吗？'))return;Object.assign(records,data.records);save()}catch{el('msg').textContent='无法读取备份：请使用 V1.7 导出的有效记录。'}finally{el('file').value=''}};
-const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),palette=['#81e5c4','#f2b978','#91b1ff'];function color(n){let top=n;while(top.parent&&top.parent!==root.id)top=nodes.get(top.parent);return palette[root.children.indexOf(top)]||'#d7f9eb'}
-function draw(){const width=canvas.clientWidth,height=canvas.clientHeight,dpr=Math.min(devicePixelRatio||1,2);if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(height*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);const size=Math.min(width*.45,height*.72)*zoom;function project(x,y,z){const xx=x*Math.cos(yaw)+z*Math.sin(yaw),zz=z*Math.cos(yaw)-x*Math.sin(yaw),yy=y*Math.cos(pitch)-zz*Math.sin(pitch),depth=zz*Math.cos(pitch)+y*Math.sin(pitch),scale=3.5/(3.5-depth);return {x:width*.5+xx*size*scale,y:height*.48+yy*size*scale,z:depth,scale}}function path(points,stroke,line=1){ctx.beginPath();points.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.stroke()}function ring(radius,tilt,shade){const points=[];for(let step=0;step<=128;step++){const theta=step*2*Math.PI/128;points.push(project(radius*Math.cos(theta),radius*Math.sin(theta)*Math.sin(tilt),radius*Math.sin(theta)*Math.cos(tilt)))}path(points,shade)}
-for(let i=0;i<100;i++){const x=((i*947)%997)/997*width,y=((i*613)%991)/991*height;ctx.fillStyle=i%7===0?'#7796ab':'#344456';ctx.fillRect(x,y,i%7===0?1.4:1,1)}ring(.97,.44,'#344957');ring(1.01,.44,'#253749');ring(.57,.44,'#273d49');const points=[],origin=project(0,0,0);points.push({...origin,n:focus,r:focus===root?29:20,central:true});const children=focus.children,total=children.length;children.forEach((child,index)=>{let theta=(index/total)*2*Math.PI-Math.PI/2;let x,y,z;if(total===1){x=.60;y=-.18;z=.23}else if(total<=8){x=Math.cos(theta)*.84;y=Math.sin(theta)*.48;z=Math.sin(theta+.55)*.36}else{const col=index%4,row=Math.floor(index/4);x=(col-1.5)*.49;y=(row-1.5)*.30;z=Math.sin(index*1.8)*.18+.02}const p=project(x,y,z);path([origin,p],color(child)+'70',1.25);points.push({...p,n:child,r:total>8?6:focus===root?15:10,central:false});if(focus===root){for(let k=0;k<child.children.length;k++){const a=(k/(child.children.length||1))*Math.PI*2+.7;const s=project(x+Math.cos(a)*.18,y+Math.sin(a)*.095,z+.14*Math.sin(a));path([p,s],color(child)+'44');ctx.fillStyle=color(child)+'aa';ctx.beginPath();ctx.arc(s.x,s.y,2.4,0,7);ctx.fill()}}});hits=[];const labels=[],mobile=width<500;points.sort((left,right)=>left.z-right.z);for(const p of points){const c=color(p.n),r=p.r*Math.min(1.3,Math.max(.76,p.scale))*Math.min(1,zoom);let glow=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r*2.8);glow.addColorStop(0,c+'65');glow.addColorStop(1,c+'00');ctx.fillStyle=glow;ctx.fillRect(p.x-r*2.8,p.y-r*2.8,r*5.6,r*5.6);let sphere=ctx.createRadialGradient(p.x-r*.34,p.y-r*.38,0,p.x,p.y,r);sphere.addColorStop(0,'#f1fffb');sphere.addColorStop(.35,c);sphere.addColorStop(1,'#263c4d');ctx.fillStyle=sphere;ctx.beginPath();ctx.arc(p.x,p.y,r,0,2*Math.PI);ctx.fill();if(p.central||selected===p.n){ctx.strokeStyle=c+'99';ctx.beginPath();ctx.ellipse(p.x,p.y,r*1.44,r*.55,-.4,0,2*Math.PI);ctx.stroke()}hits.push({...p,r:Math.max(15,r+4)});labels.push({...p,r,c})}
-const occupied=[];for(const p of labels.sort((a,b)=>Number(b.n===selected)-Number(a.n===selected)||Number(b.central)-Number(a.central))){const short={'G001':'现金财富积累','G002':'生活物质与消费','G003':'投资资产','A':'温饱保障 · P0','B':'房产交通与数码','C':'健康与运动','D':'软件及数字服务'};const title=p.n.categoryNode?p.n.name:short[p.n.id]||p.n.name;ctx.font=`${p.central?'600':'500'} ${mobile?11:13}px system-ui`;const tw=ctx.measureText(title).width+14;const left=Math.max(2,Math.min(width-tw-2,p.x-tw/2));let top=p.y+p.r+6;const blocked=t=>occupied.some(box=>left<box.x+box.w&&left+tw>box.x&&t<box.y+box.h&&t+21>box.y);if(blocked(top))top=p.y-p.r-24;if(blocked(top)&&total>8&&p.n!==selected)continue;ctx.fillStyle='#101c29ec';ctx.fillRect(left,top,tw,21);ctx.fillStyle=p.c;ctx.textAlign='center';ctx.fillText(title,left+tw/2,top+15);occupied.push({x:left,y:top,w:tw,h:21});hits.push({n:p.n,box:{x:left,y:top,w:tw,h:21}})}ctx.textAlign='left';ctx.fillStyle='#88a3af';ctx.font='11px Consolas,monospace';ctx.fillText('ATLAS  /  '+focus.id,16,23)}
-let drag=null;canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:0}};canvas.onpointermove=e=>{if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.hypot(dx,dy);yaw+=dx*.009;pitch=Math.max(-1.35,Math.min(1.35,pitch+dy*.009));drag.x=e.clientX;drag.y=e.clientY;draw()};canvas.onpointerup=e=>{if(!drag||drag.id!==e.pointerId)return;if(drag.moved<6){const bounds=canvas.getBoundingClientRect(),x=e.clientX-bounds.left,y=e.clientY-bounds.top;const p=[...hits].reverse().find(mark=>mark.box?x>=mark.box.x&&x<=mark.box.x+mark.box.w&&y>=mark.box.y&&y<=mark.box.y+mark.box.h:Math.hypot(x-mark.x,y-mark.y)<mark.r);if(p)activateGoal(p.n.id)}drag=null};canvas.onpointercancel=()=>drag=null;function magnify(factor){zoom=Math.max(.55,Math.min(2.5,zoom*factor));draw()}canvas.addEventListener('wheel',e=>{e.preventDefault();magnify(e.deltaY<0?1.07:1/1.07)},{passive:false});el('plus').onclick=()=>magnify(1.15);el('minus').onclick=()=>magnify(1/1.15);el('reset').onclick=()=>{yaw=0;pitch=.13;zoom=1;draw()};new ResizeObserver(draw).observe(canvas);refresh();
-const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
-const orbitButton=el('toggle-orbit');
-let orbitEnabled=!motionPreference.matches,orbitVisible=false,orbitFrame=0,lastOrbitTime=null;
-function scheduleOrbit(){
- orbitButton.textContent=orbitEnabled?'暂停旋转':'自动旋转';
- if(orbitEnabled&&orbitVisible&&!document.hidden){
-   if(!orbitFrame)orbitFrame=requestAnimationFrame(advanceOrbit);
- }else{
-   cancelAnimationFrame(orbitFrame);
-   orbitFrame=0;
-   lastOrbitTime=null;
- }
-}
-function advanceOrbit(time){
- orbitFrame=requestAnimationFrame(advanceOrbit);
- if(drag||el('record-editor').open||el('category-editor').open){lastOrbitTime=null;return}
- lastOrbitTime??=time;
- const elapsed=time-lastOrbitTime;
- if(elapsed<32)return;
- lastOrbitTime=time;
- yaw=(yaw+Math.min(elapsed,50)*0.00022)%(2*Math.PI);
- draw();
-}
-orbitButton.onclick=()=>{orbitEnabled=!orbitEnabled;scheduleOrbit()};
-motionPreference.addEventListener('change',event=>{orbitEnabled=!event.matches;scheduleOrbit()});
-document.addEventListener('visibilitychange',scheduleOrbit);
-new IntersectionObserver(([entry])=>{orbitVisible=entry.isIntersecting;scheduleOrbit()}).observe(canvas);
-scheduleOrbit();
+function draw(){window.goalAtlas?.refresh()}
+refresh();
 
 </script>
 <script>
@@ -267,7 +283,7 @@ function renderPainDetail(){const p=painById(painFocus);if(!p){el('pain-detail')
 const area=el('mapped-goals');if(!linked.length)area.innerHTML='<span class="tiny">待登记对应目标</span>';else for(const id of linked){let b=document.createElement('button');b.className='chip';b.textContent=id+' · '+nodes.get(id).name;b.title='点击查看对应目标';b.onclick=()=>route(id);area.append(b)}
 const opts=el('pain-select-goal');for(const goal of goals){const opt=document.createElement('option');opt.value=goal.id;opt.textContent=goal.id+' · '+goal.name;opts.append(opt)}el('pain-link').onclick=()=>{const id=opts.value;if(!id||linked.includes(id))return;const arr=Array.isArray(painLinks[p.id])?painLinks[p.id]:[];painLinks[p.id]=[...new Set([...arr,id])];persistV18(linksKey,painLinks);renderPain()}}
 function renderPainRegister(){let query=el('pain-q').value.trim().toLowerCase();const items=allPains().filter(p=>(!window.needsUI||window.needsUI.includes(p.id))&&(painTierFilter===null||belongsToPainCategory(p.tier,painTierFilter))&&[p.id,p.name,...linkedIds(p)].join(' ').toLowerCase().includes(query));el('pain-count-note').textContent=allPains().length+' 个痛点';el('pain-matches').textContent='匹配 '+items.length+' 项';const target=el('pain-register');target.replaceChildren();for(const p of items){const b=document.createElement('button');b.className='pain-item'+(painFocus===p.id?' active-pain':'');b.innerHTML='<small>'+esc(p.id)+' / '+esc(tierName(p.tier))+(window.needsUI?' · '+esc(window.needsUI.level(p.id)):'')+'</small><strong>'+esc(p.name)+'</strong><span class="tag">'+(linkedIds(p).length?linkedIds(p).map(esc).join('、'):'待登记对应目标')+'</span>';b.onclick=()=>{painFocus=p.id;renderPain();openRecordEditor('pains',p.id)};target.append(b)}if(!items.length)target.textContent='没有匹配的痛点。'}
-function renderPain(){window.needsUI?.refresh();renderPyramid();renderPainDetail();renderPainRegister()}
+function renderPain(){window.needsUI?.refresh();renderPyramid();renderPainDetail();renderPainRegister();if(window.goalAtlas)refresh()}
 el('all-pains').onclick=()=>{window.needsUI?.clear();painTierFilter=null;renderPain()};el('clear-pain-filter').onclick=()=>{window.needsUI?.clear();painTierFilter=null;el('pain-q').value='';renderPain()};el('pain-q').oninput=renderPainRegister;
 el('pain-add-form').onsubmit=e=>{e.preventDefault();const name=el('new-pain-name').value.trim(),tier=el('new-pain-tier').value,note=el('new-pain-note').value.trim(),feedback=el('pain-entry-feedback');if(!name){feedback.textContent='请先填写痛点名称（必填）。';el('new-pain-name').focus();return}if(!tiers.some(t=>t.id===tier)){feedback.textContent='请选择有效层级。';return}const next=allPains().reduce((n,p)=>Math.max(n,Number(p.id.slice(1))),0)+1;const pain={id:'P'+String(next).padStart(3,'0'),name,tier,note:note||'对应目标待确认。',goals:[]};extraPains.push(pain);const saved=persistV18(painsKey,extraPains);painFocus=pain.id;painTierFilter=null;el('new-pain-name').value='';el('new-pain-note').value='';renderPain();feedback.innerHTML='<div class="entry-success">'+esc(pain.id)+' · '+esc(name)+(saved?' 已登记并保存在当前浏览器':' 已加入当前页面，但未持久保存；请导出备份')+'。</div>';feedback.scrollIntoView({block:'nearest'});el('msg').textContent=saved?'登记成功：'+pain.id+' · '+name+'。已保存至当前浏览器。':'登记成功但无法持久保存：'+pain.id+'。请导出备份。'};
 function formatWan(amount){
@@ -663,7 +679,7 @@ function openRecordEditor(kind,id){
  let goalCategory;
  if(isGoal){goalCategory=document.createElement('select');categoryOptions(goalCategory,'goals');field('显示分类',goalCategory,item.category??root.id);}
  const modelFields=window.needsUI?.edit(fields,kind,item);
- let budget,actual,links=[];
+ let budget,actual,links=[],parentChecks=[];
  if(isGoal){
    const currency=(label,value)=>{
      const input=document.createElement('input');
@@ -672,6 +688,15 @@ function openRecordEditor(kind,id){
    };
    budget=currency('预算人民币',item.budget);
    actual=currency('实际金额',item.actual);
+   const group=document.createElement('fieldset'),legend=document.createElement('legend');
+   legend.textContent='关联上级（同一目标可在多个路径显示）';group.append(legend);
+   const options=[...(activeHierarchy?.goals||[]),...cloudSnapshot.goals.filter(goal=>goal.id!==id)];
+   parentChecks=options.map(node=>{
+     const input=document.createElement('input'),label=document.createElement('label');
+     input.type='checkbox';input.value=node.id;input.checked=item.parentIds?.includes(node.id)===true;
+     label.append(input,node.name);group.append(label);return input;
+   });
+   fields.append(group);
  }else{
    const group=document.createElement('fieldset'),legend=document.createElement('legend');
    legend.textContent='关联目标';group.append(legend);
@@ -709,7 +734,7 @@ function openRecordEditor(kind,id){
  form.onsubmit=event=>{
    event.preventDefault();
    const values={name:name.value,note:note.value};
-   const edits=isGoal?{...values,category:goalCategory.value,priority:select.value,budget:budget.value===''?null:budget.valueAsNumber,actual:actual.value===''?null:actual.valueAsNumber}:{...values,category:select.value,links:links.filter(input=>input.checked).map(input=>input.value)};
+   const edits=isGoal?{...values,category:goalCategory.value,parentIds:parentChecks.filter(input=>input.checked).map(input=>input.value),priority:select.value,budget:budget.value===''?null:budget.valueAsNumber,actual:actual.value===''?null:actual.valueAsNumber}:{...values,category:select.value,links:links.filter(input=>input.checked).map(input=>input.value)};
    submit('PATCH',edits);
  };
  el('record-delete').onclick=()=>{
@@ -751,4 +776,4 @@ window.addEventListener('pageshow',event=>{if(event.persisted)syncFromNotion('pa
 setInterval(()=>syncFromNotion('periodic'),60000);
 cloudStatus(readOnlyView?'正在读取公开目标数据……':'正在连接 Notion 数据库……','wait');
 syncFromNotion('startup');
-</script><script src="/view/needs.js"></script><script src="/view/needs-ui.js"></script></body></html>
+</script><script src="/view/needs.js"></script><script src="/view/needs-ui.js"></script><script src="/view/goal-atlas.js"></script></body></html>

@@ -24,8 +24,9 @@ for(const name of ['Cf-Access-Jwt-Assertion','CF_ACCESS_AUD','NOTION_TOKEN','NOT
 }
 if(/(?:ntn_|secret_)[a-zA-Z0-9]{20,}/.test(html+worker))throw Error('疑似将 Notion 密钥写入了 GitHub 源码');
 for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi))new vm.Script(match[1]);
-for(const name of ['_worker.js','needs.js','needs-ui.js'])execFileSync(process.execPath,['--check',path.join(site,name)]);
+for(const name of ['_worker.js','needs.js','needs-ui.js','goal-atlas.js'])execFileSync(process.execPath,['--check',path.join(site,name)]);
 execFileSync(process.execPath,['test-needs.cjs'],{stdio:'inherit'});
+execFileSync(process.execPath,['test-goal-atlas.cjs'],{stdio:'inherit'});
 const routes=JSON.parse(fs.readFileSync(path.join(site,'_routes.json'),'utf8'));
 if(!routes.include?.includes('/*'))throw Error('Pages Worker 访问保护路由不完整');
 console.log('OK: V2.0.3 基于 V2.0.2 的 HTML、API、保护机制与全部静态资源校验通过');

@@ -232,7 +232,7 @@ window.needsUI = (() => {
     };
   }
   return {
-    refresh, detail, edit, clear: () => { filter=null; },
+    refresh, detail, edit, atlasData: () => model, clear: () => { filter=null; },
     level: id => levels[model?.pains.find(pain => pain.id === id)?.dynamic] || '待归类',
     includes: id => !filter || model.pains.some(pain => pain.id === id && category(pain) === filter),
     saveRecord: (kind,id,value) => persist({...saved,[kind]:{...saved[kind],[id]:value}}),

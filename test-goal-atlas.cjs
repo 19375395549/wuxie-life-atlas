@@ -1,0 +1,18 @@
+const assert = require('node:assert/strict');
+const { radius, childGraph } = require('./site/goal-atlas.js');
+assert.equal(radius(null, 100, 'log', 4, 20), 4);
+assert.equal(radius(0, 100, 'log', 4, 20), 4);
+assert.equal(radius(100, 100, 'log', 4, 20), 20);
+assert.equal(radius(25, 100, 'area', 0, 20), 10);
+assert.equal(radius(25, 100, 'uniform', 4, 20), 12);
+const leaf = {id:'goal',children:[]};
+const first = {id:'g1',children:[leaf]};
+const second = {id:'g2',children:[]};
+const root = {id:'root',children:[first,second]};
+const nodes = new Map([root,first,second,leaf].map(node=>[node.id,node]));
+const parents = [{id:'goal',parentIds:['g1','g2','g2','missing']},{id:'root',parentIds:['goal']}];
+const graph = childGraph(nodes,parents);
+assert.deepEqual([...graph.get('g1')],['goal']);
+assert.deepEqual([...graph.get('g2')],['goal']);
+assert.deepEqual([...graph.get('goal')],[]);
+console.log('Atlas radius modes, multiple parents, deduplication and cycle protection passed');

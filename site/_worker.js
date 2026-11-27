@@ -84,7 +84,7 @@ async function changeCategory(env,kind,id,method,data,current){
   const category=categories.find(node=>node.id===id);
   if(!category)throw Object.assign(new Error('找不到指定分类'),{status:404});
   if(method==='DELETE'){
-    if(categories.some(node=>node.parent===id)||current[kind].some(record=>record.category===id)){
+    if(categories.some(node=>node.parent===id)||current[kind].some(record=>record.category===id||record.parentIds?.includes(id))){
       throw Object.assign(new Error('请先移走下级分类和登记项，再删除此分类'),{status:409});
     }
     await saveCategory(env,kind,{...category,deleted:true});
@@ -170,7 +170,9 @@ async function queryAll(env,id){
   return results;
 }
 const GOAL_CODE = /^G00[123]-\d{2,}$/;
-function asGoal(page){const p=page.properties||{};return {id:readPlain(p[GOAL_FIELDS.id]).trim() || page.id,pageId:page.id,name:readPlain(p[GOAL_FIELDS.name]),parent:readPlain(p[GOAL_FIELDS.parent]),branch:readSelect(p[GOAL_FIELDS.branch]),budget:numberOrNull(p[GOAL_FIELDS.budget]?.number),type:readSelect(p[GOAL_FIELDS.type]),actual:numberOrNull(p[GOAL_FIELDS.actual]?.number),priority:readSelect(p[GOAL_FIELDS.priority])||'待确认',note:readPlain(p[GOAL_FIELDS.note])};}
+function asGoal(page){const p=page.properties||{};
+  const [parent,related='']=readPlain(p[GOAL_FIELDS.parent]).split('\n@links:');
+  return {id:readPlain(p[GOAL_FIELDS.id]).trim() || page.id,pageId:page.id,name:readPlain(p[GOAL_FIELDS.name]),parent,parentIds:related.split(',').filter(id=>/^[a-zA-Z0-9-]{1,64}$/.test(id)),branch:readSelect(p[GOAL_FIELDS.branch]),budget:numberOrNull(p[GOAL_FIELDS.budget]?.number),type:readSelect(p[GOAL_FIELDS.type]),actual:numberOrNull(p[GOAL_FIELDS.actual]?.number),priority:readSelect(p[GOAL_FIELDS.priority])||'待确认',note:readPlain(p[GOAL_FIELDS.note])};}
 function asPain(page,idByPage){const p=page.properties||{};const relation=p[PAIN_FIELDS.relation];const related=(relation?.relation||[]).map(x=>idByPage[x.id]).filter(Boolean);const listed=readPlain(p[PAIN_FIELDS.links]).split(/[，,\s]+/).filter(x=>/^G00[123]-\d{2,}$/.test(x));const tierName=readSelect(p[PAIN_FIELDS.tier]);const tier=Object.keys(TIER_NAMES).find(x=>TIER_NAMES[x]===tierName)||(tierName.startsWith(CATEGORY_PREFIX)?tierName:'L3');return {id:readPlain(p[PAIN_FIELDS.id]),pageId:page.id,name:readPlain(p[PAIN_FIELDS.name]),tier,note:readPlain(p[PAIN_FIELDS.note]),links:[...new Set(Array.isArray(relation?.relation)?related:listed)]};}
 async function state(env){
   const [goalPages,painPages]=await Promise.all([queryAll(env,env.NOTION_GOALS_SOURCE_ID),queryAll(env,env.NOTION_PAINS_SOURCE_ID)]);
@@ -222,7 +224,26 @@ async function patchGoal(env,id,data,existing,categories){
     if(existing.some(g=>g.id!==id&&g.branch===goal.branch&&g.name.trim()===name))throw Object.assign(new Error('同一分支已存在此目标'),{status:409});
     props[GOAL_FIELDS.name]=titleValue(name);
   }
-  if(Object.hasOwn(data,'category'))props[GOAL_FIELDS.parent]=textValue(CATEGORY_PREFIX+requireCategory('goals',data.category,categories,true));
+  if(Object.hasOwn(data,'category')||Object.hasOwn(data,'parentIds')){
+    const primary=Object.hasOwn(data,'category')?CATEGORY_PREFIX+requireCategory('goals',data.category,categories,true):goal.parent;
+    const parents=data.parentIds??goal.parentIds;
+    const goalsById=new Map(existing.map(record=>[record.id,record]));
+    const validIds=new Set([...goalsById.keys(),...categories.map(category=>category.id)]);
+    if(!Array.isArray(parents)||parents.length>20||parents.some(parent=>!validIds.has(parent))){
+      throw Object.assign(new Error('请选择有效的关联上级，最多 20 个'),{status:400});
+    }
+    const nextParents=[...new Set(parents)];
+    const pending=[...nextParents],seen=new Set();
+    while(pending.length){
+      const parent=pending.pop();
+      if(parent===id)throw Object.assign(new Error('不能建立循环的目标关系'),{status:400});
+      if(seen.has(parent))continue;
+      seen.add(parent);
+      const record=goalsById.get(parent);
+      if(record)pending.push(record.parent,...record.parentIds);
+    }
+    props[GOAL_FIELDS.parent]=textValue(primary+(nextParents.length?'\n@links:'+nextParents.join(','):''));
+  }
   if(Object.hasOwn(data,'actual'))props['实际金额']={number:validateAmount(data.actual)};
   if(Object.hasOwn(data,'note'))props['说明']=textValue(cleanNote(data.note));
   if(Object.hasOwn(data,'budget'))props['预算人民币']={number:validateAmount(data.budget)};
@@ -357,7 +378,7 @@ async function api(request,env,url){
       if(goalMatch){
         const linked=current.pains.filter(p=>p.links.includes(id));
         if(linked.length)return fail('请先在对应痛点中取消关联：'+linked.map(p=>p.id).join('、'),409);
-        if(current.goals.some(g=>g.parent===id))return fail('请先处理该目标的下级目标',409);
+        if(current.goals.some(g=>g.parent===id||g.parentIds?.includes(id)))return fail('请先处理该目标的下级目标',409);
       }
       await notion(env,'/pages/'+item.pageId,{method:'PATCH',body:{in_trash:true}});
       return json({ok:true});
@@ -370,7 +391,7 @@ export default {
     const publicAssets = new Set(['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/.well-known/assetlinks.json']);
     const url=new URL(request.url);
     const path=url.pathname;
-    if ((path==='/view/needs.js'||path==='/view/needs-ui.js')&&['GET','HEAD'].includes(request.method)&&env.ASSETS){
+    if ((path==='/view/needs.js'||path==='/view/needs-ui.js'||path==='/view/goal-atlas.js')&&['GET','HEAD'].includes(request.method)&&env.ASSETS){
       return withHeaders(await env.ASSETS.fetch(new Request(new URL(path.slice('/view'.length),url),request)));
     }
     if (path==='/view' || path==='/view/' || path==='/view/state') {
