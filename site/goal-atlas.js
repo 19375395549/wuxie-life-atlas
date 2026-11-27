@@ -10,8 +10,9 @@ const AtlasGeometry = (() => {
   }
   function distanceRatio(amount,max) {
     if(!known(amount))return 1.06;
-    return 1-0.76*(max>0?Math.log1p(amount)/Math.log1p(max):0);
+    return 1-0.76*(max>0?(Math.log1p(amount)/Math.log1p(max))**1.48:0);
   }
+  const armAngle = (axis, distance) => axis + 5.6 * (Math.sqrt(distance) - Math.sqrt(0.50));
   function spreadAngles(items,anchors){
     const occupied=anchors.map(({angle,distance})=>[Math.cos(angle)*distance,Math.sin(angle)*distance]);
     const placed=new Map();
@@ -28,7 +29,7 @@ const AtlasGeometry = (() => {
           const dx=px-x,dy=py-y;
           nearestSquared=Math.min(nearestSquared,dx*dx+dy*dy);
         }
-        const affinity=(1-Math.cos(offset))*0.085;
+        const affinity=(1-Math.cos(offset))*0.27;
         const score=Math.sqrt(nearestSquared)-affinity;
         if(score>bestScore){bestScore=score;bestAngle=angle;}
       }
@@ -56,10 +57,68 @@ const AtlasGeometry = (() => {
     }
     return graph;
   }
-  return {known,radius,distanceRatio,spreadAngles,childGraph};
+  return {known,radius,distanceRatio,armAngle,spreadAngles,childGraph};
 })();
 if (typeof module !== 'undefined') module.exports = AtlasGeometry;
 if (typeof window !== 'undefined') startGoalAtlas();
+
+// Rasterize the dust once. Nodes and dust use the same spiral in world coordinates.
+function createNebula(axes, low) {
+  const texture = document.createElement('canvas');
+  const side = low ? 640 : 1200;
+  texture.width = texture.height = side;
+  const ink = texture.getContext('2d');
+  const extent = side / 2.55;
+  ink.translate(side / 2, side / 2);
+  let seed = 531703;
+  function random() {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  }
+  const scatter = () => random() + random() + random() - 1.5;
+  function mist(x, y, radius, color) {
+    const cloud = ink.createRadialGradient(x,y,0,x,y,radius);
+    cloud.addColorStop(0,color);
+    cloud.addColorStop(1,'transparent');
+    ink.fillStyle = cloud;
+    ink.fillRect(x-radius,y-radius,radius*2,radius*2);
+  }
+  const hues = ['136,195,230','229,203,167','152,164,232'];
+  const arms = axes.length ? axes : [-1.9,0.2,2.3];
+  const density = Math.round((low ? 2500 : 7800) / arms.length);
+  ink.globalCompositeOperation = 'lighter';
+  arms.forEach((axis, index) => {
+    const hue = hues[index % hues.length];
+    for (let i = 0; i < density; i++) {
+      const t = random();
+      const distance = 0.018 + 1.13 * t * t;
+      const spread = 0.08 + 0.32 * random();
+      const angle = AtlasGeometry.armAngle(axis, distance) + scatter()*spread;
+      const r = (distance + scatter()*0.023) * extent;
+      const x = Math.cos(angle)*r, y = Math.sin(angle)*r;
+      const knots = 0.78 + 0.22*Math.sin(27*distance+index)*Math.cos(17*distance);
+      const fade = knots*Math.min(1,(1.16-distance)*5);
+      if (i % 13 === 0) {
+        const breadth=(0.032+random()*0.11)*extent;
+        mist(x+scatter()*breadth,y+scatter()*breadth,breadth,'rgba('+hue+','+0.115*fade+')');
+      }
+      const intensity = random();
+      const dot = extent * (0.0009 + 0.0035 * intensity ** 5);
+      ink.fillStyle = 'rgba('+(intensity>0.78?'232,242,255':hue)+','+((0.17+0.77*intensity)*fade)+')';
+      ink.beginPath();
+      ink.arc(x,y,dot,0,2*Math.PI);
+      ink.fill();
+      if (intensity > 0.993 && distance > 0.15) {
+        mist(x,y,dot*5,'rgba(179,215,255,0.54)');
+        ink.fillStyle='rgba(210,230,255,0.55)';
+        ink.fillRect(x-dot*3,y-dot/4,dot*6,dot/2);
+        ink.fillRect(x-dot/4,y-dot*3,dot/2,dot*6);
+      }
+    }
+  });
+  mist(0,0,extent*0.22,'rgba(156,211,255,0.26)');
+  return texture;
+}
 
 function startGoalAtlas() {
   const canvas = el('scene').querySelector('canvas'), ctx = canvas.getContext('2d');
@@ -83,6 +142,7 @@ function startGoalAtlas() {
   let frame=0, lastTime=null, visible=false, playing=!media.matches, hovered=null;
   let toolbarHover=false, focusTarget=null, pan={x:0,y:0}, pointers=new Map(), pinchDistance=0, dragged=false;
 
+  let nebula, textureKey;
   const search=el('atlas-search'), category=el('atlas-category'), need=el('atlas-need'), amountMode=el('atlas-amount');
   const scale=el('atlas-scale'), speed=el('atlas-speed'), toggle=el('toggle-orbit'), accessible=el('atlas-accessible');
   function store() { try { localStorage.setItem(memory,JSON.stringify(options)); } catch {} }
@@ -157,20 +217,22 @@ function startGoalAtlas() {
     }
     const laneCount=Math.max(1,branchIds.length+Number(grouped.has(root.id)));
     const turn=2*Math.PI/laneCount;
-    orbitBranches=branchIds.map((id,index)=>({id,angle:-Math.PI/2+index*turn}));
+    orbitBranches=branchIds.map((id,index)=>({id,angle:-1.88+index*turn}));
     orbitRows=[...grouped].flatMap(([branch,rows])=>rows.map((row,index)=>{
       const lane=lanes.get(branch)??branchIds.length;
       const fraction=((index+1)*0.61803398875)%1;
+      const laneWidth=Math.min(turn*1.35,0.64+rows.length*0.067);
+      const distance=AtlasGeometry.distanceRatio(row[amountMode.value],maxAmount);
       return {
         row,branch,visible:included.has(row.id),
-        angle:-Math.PI/2+(lane+(fraction-.5)*0.94)*turn,
+        angle:AtlasGeometry.armAngle(-1.88+lane*turn,distance)+(fraction-.5)*laneWidth,
         unit:AtlasGeometry.radius(row[amountMode.value],maxAmount,options.scale,0,1),
-        distance:AtlasGeometry.distanceRatio(row[amountMode.value],maxAmount)
+        distance
       };
     }));
     const angles=AtlasGeometry.spreadAngles(
       orbitRows.map(item=>({id:item.row.id,angle:item.angle,distance:item.distance})),
-      orbitBranches.map(branch=>({angle:branch.angle,distance:0.23/0.43}))
+      orbitBranches.map(branch=>({angle:branch.angle,distance:0.50}))
     );
     for(const item of orbitRows)item.angle=angles.get(item.row.id);
     const displayed=new Set([root.id,...branchIds,...visibleRows.map(row=>row.id)]);
@@ -211,21 +273,21 @@ function startGoalAtlas() {
   }
   function orbitalPositions(width,height) {
     const size=Math.min(width,height),zoom=options.zoom;
-    const maxRadius=Math.max(6,Math.min(20,size/Math.max(17,Math.sqrt(orbitRows.length)*4.4)))*zoom;
+    const maxRadius=Math.max(6,Math.min(14,size/Math.max(21,Math.sqrt(orbitRows.length)*6.5)))*zoom;
     const centerX=width/2+pan.x,centerY=height/2+pan.y;
     const polar=(angle,distance)=>({
       x:centerX+Math.cos(angle+options.angle)*size*distance*zoom,
       y:centerY+Math.sin(angle+options.angle)*size*distance*zoom
     });
     const marks=orbitRows.filter(item=>item.visible).map(({row,angle,unit,distance})=>{
-      const minimum=Math.min(maxRadius,4*zoom);
+      const minimum=Math.min(maxRadius,2.7*zoom);
       const radius=options.scale==='area'?Math.max(minimum,maxRadius*unit):minimum+(maxRadius-minimum)*unit;
       return {id:row.id,...polar(angle,distance*0.43),r:radius,row};
     });
     for(const branch of orbitBranches){
-      marks.push({id:branch.id,...polar(branch.angle,0.23),r:Math.min(13,9*zoom),branch:true});
+      marks.push({id:branch.id,...polar(branch.angle,0.215),r:Math.min(16,size*.022)*zoom,branch:true});
     }
-    marks.push({id:root.id,x:centerX,y:centerY,r:15});
+    marks.push({id:root.id,x:centerX,y:centerY,r:Math.min(24,size*.038)*zoom});
     return marks;
   }
   function paint() {
@@ -236,7 +298,10 @@ function startGoalAtlas() {
     if(canvas.width!==pixelWidth||canvas.height!==pixelHeight){canvas.width=pixelWidth;canvas.height=pixelHeight;}
     ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,width,height);
     const circle=(x,y,r)=>{ctx.beginPath();ctx.arc(x,y,Math.max(0.1,r),0,Math.PI*2);};
-    ctx.fillStyle='#7594b166';
+    const sky=ctx.createRadialGradient(width*.50,height*.48,0,width*.50,height*.48,Math.hypot(width,height)*.54);
+    sky.addColorStop(0,'#101c30');sky.addColorStop(.54,'#0b1322');sky.addColorStop(1,'#050a13');
+    ctx.fillStyle=sky;ctx.fillRect(0,0,width,height);
+    ctx.fillStyle='#99b6d27a';
     for(let i=0;i<(options.low?36:95);i++)ctx.fillRect((i*997%977)*width/977,(i*617%991)*height/991,1,i%7===0?2:1);
     let marks=orbitalPositions(width,height);
     if(focusTarget){
@@ -249,14 +314,30 @@ function startGoalAtlas() {
         if(Math.hypot(dx,dy)<2)focusTarget=null;
       }else focusTarget=null;
     }
+    const axes=orbitBranches.map(branch=>branch.angle);
+    const key=[options.low,...axes].join('|');
+    if(key!==textureKey){nebula=createNebula(axes,options.low);textureKey=key;}
+    const extent=Math.min(width,height)*.43*options.zoom;
+    const textureSize=extent*2.55;
+    ctx.save();
+    ctx.translate(width/2+pan.x,height/2+pan.y);
+    ctx.rotate(options.angle);
+    ctx.drawImage(nebula,-textureSize/2,-textureSize/2,textureSize,textureSize);
+    ctx.restore();
     const byId=new Map(marks.map(mark=>[mark.id,mark]));
     for(const [parent,id] of orbitLinks){
       const a=byId.get(parent),b=byId.get(id);
       if(!a||!b)continue;
       const branch=nodes.get(parent)?.branch||parent;
       const line=colors[b.row?.branch]||colors[branch]||'#70bfd2';
-      ctx.strokeStyle=line+(id===selection||parent===selection&&parent!==root.id?'a0':'40');
-      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      const active=[id,parent].some(key=>key!==root.id&&(key===selection||key===hovered));
+      const trunk=parent===root.id;
+      ctx.strokeStyle=line+(active?'a8':trunk?'6b':'23');
+      const dx=b.x-a.x,dy=b.y-a.y;
+      const bend=trunk ? 0.23 : 0.12;
+      ctx.beginPath();ctx.moveTo(a.x,a.y);
+      ctx.quadraticCurveTo((a.x+b.x)/2+dy*bend,(a.y+b.y)/2-dx*bend,b.x,b.y);
+      ctx.stroke();
     }
     const boxes=[];
     hits=[];
@@ -264,11 +345,12 @@ function startGoalAtlas() {
     for(const mark of marks){
       const {x,y,r,row,id}=mark;
       if(x+r<0||x-r>width||y+r<0||y-r>height)continue;
-      const color=row?.level==='P2'?'#8998aa':colors[row?.branch||id]||'#73c7dc';
+      const color=id===root.id?'#c5e8ed':row?.level==='P2'?'#8998aa':colors[row?.branch||id]||'#73c7dc';
       if(!options.low){
-        const glow=ctx.createRadialGradient(x,y,0,x,y,r*2.2);
+        const halo=r*(id===root.id?3.2:mark.branch?2.6:1.8);
+        const glow=ctx.createRadialGradient(x,y,0,x,y,halo);
         glow.addColorStop(0,color+(row?.level.startsWith('P0')?'a0':'52'));glow.addColorStop(1,color+'00');
-        circle(x,y,r*2.2);ctx.fillStyle=glow;ctx.fill();
+        circle(x,y,halo);ctx.fillStyle=glow;ctx.fill();
       }
       const sphere=ctx.createRadialGradient(x-r*.36,y-r*.36,0,x,y,r);
       sphere.addColorStop(0,'#f4ffff');sphere.addColorStop(.28,color);sphere.addColorStop(1,'#172f49');
@@ -281,7 +363,7 @@ function startGoalAtlas() {
         ctx.beginPath();ctx.ellipse(x,y,r*1.65,r*0.56,-0.4,0,Math.PI*2);
         ctx.strokeStyle='#9edddb9c';ctx.stroke();
       }
-      if(selection===id||hovered===id){circle(x,y,r+6);ctx.strokeStyle='#c9fcff';ctx.stroke();}
+      if((selection===id&&id!==root.id)||hovered===id){circle(x,y,r+6);ctx.strokeStyle='#c9fcff';ctx.stroke();}
       hits.push({...mark,r:Math.max(10,r+3)});
     }
     const labels=[...marks].sort((a,b)=>Number(b.id===selection||b.id===hovered)-Number(a.id===selection||a.id===hovered));
@@ -298,8 +380,8 @@ function startGoalAtlas() {
       const y=Math.max(0,Math.min(height-heightText,mark.y+mark.r+5));
       if(!forced&&boxes.some(box=>x<box.x+box.w&&x+widthText>box.x&&y<box.y+box.h&&y+heightText>box.y))continue;
       boxes.push({x,y,w:widthText,h:heightText});
-      ctx.fillStyle='#101e2eea';ctx.fillRect(x,y,widthText,heightText);
-      ctx.fillStyle='#daeff8';ctx.textAlign='center';ctx.fillText(caption,x+widthText/2,y+12);
+      ctx.fillStyle='#081221c9';ctx.fillRect(x,y,widthText,heightText);
+      ctx.fillStyle=colors[mark.id]||'#daeff8';ctx.textAlign='center';ctx.fillText(caption,x+widthText/2,y+12);
       if(value){ctx.fillStyle='#97b6ce';ctx.fillText(value,x+widthText/2,y+27);}
       hits.push({id:mark.id,row:mark.row,box:{x,y,w:widthText,h:heightText}});
     }
