@@ -9,8 +9,8 @@ const AtlasGeometry = (() => {
     return mode === 'area' ? Math.max(minRadius,maxRadius * fraction) : minRadius + (maxRadius-minRadius) * fraction;
   }
   function distanceRatio(amount,max) {
-    if(!known(amount))return 0.15;
-    return 0.24+0.76*(max>0?Math.log1p(amount)/Math.log1p(max):0);
+    if(!known(amount))return 1.06;
+    return 1-0.76*(max>0?Math.log1p(amount)/Math.log1p(max):0);
   }
   function childGraph(tree, records) {
     const graph = new Map([...tree].map(([id,node]) => [id,new Set(node.children.map(child => child.id))]));

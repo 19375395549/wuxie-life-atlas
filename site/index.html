@@ -143,7 +143,7 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
  <div class="toolbar atlas-tools"><button id="minus" type="button" aria-label="缩小">−</button><button id="plus" type="button" aria-label="放大">＋</button>
   <label>可见节点 <select id="atlas-accessible"></select></label><span id="atlas-status" role="status"></span>
  </div>
- <div class="caption">球体大小与离中心的距离对应所选金额。距离使用对数，金额越大越远；统一大小模式只保留距离尺度。青绿：现金财富 · 金色：生活消费 · 蓝色：投资本金。</div>
+ <div class="caption">球体大小与离中心的距离对应所选金额。距离按对数映射，金额越大越靠近中心；统一大小模式只保留距离尺度。青绿：现金财富 · 金色：生活消费 · 蓝色：投资本金。</div>
 </section><aside id="detail"></aside></div>
 <section class="panel"><details open><summary>目标登记簿 <small id="goal-count-note">　GOAL INDEX / 30</small></summary><div class="row"><input id="q" aria-label="搜索目标" placeholder="搜索编号或目标名称"><select id="filter" aria-label="按分支筛选"><option value="">全部分支</option><option>G001</option><option>G002</option><option>G003</option></select><small id="matches"></small></div><div id="register" class="register"></div>
 <details class="subheader" id="goal-entry" data-entry><summary>＋ 新增目标（保留原编号，自动顺延）</summary>
