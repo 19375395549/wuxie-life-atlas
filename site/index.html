@@ -55,6 +55,8 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
 #category-form [hidden]{display:none}
 #goal-tree-manager{margin:12px 0}
 #goal-tree-manager .row{margin:8px 0}
+#goal-root-rename{display:inline-flex;align-items:baseline;gap:8px;flex-wrap:wrap;text-align:left;overflow-wrap:anywhere}
+#goal-root-rename .dim{font-size:12px}
 #goal-category-list{padding-inline-start:1.25rem;margin:0;max-height:230px;overflow:auto}
 #goal-category-list ul{padding-inline-start:clamp(.65rem,2vw,1.1rem)}
 #goal-category-list li{margin:4px 0}
@@ -89,8 +91,9 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
 <details id="goal-tree-manager" class="subheader editor-only">
  <summary>管理目标树分类</summary>
  <div class="row">
-  <strong id="goal-tree-name">无邪人生目标树</strong>
-  <button id="goal-root-rename" type="button" disabled>重命名目标树</button>
+  <button id="goal-root-rename" type="button" title="重命名目标树" disabled>
+   <strong id="goal-tree-name">无邪人生目标树</strong><span class="dim">重命名</span>
+  </button>
   <button id="goal-category-add" type="button" disabled>新增分类</button>
  </div>
  <ul id="goal-category-list" aria-label="目标树分类"></ul>
