@@ -28,9 +28,9 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
 .status-helper{margin:10px 0;padding:10px 13px;border:1px solid #566b65;background:#1e302f;color:#e2f7e7;border-radius:9px;font-size:13px;line-height:1.7}.status-helper b{color:#e6ffe8}.status-helper .warning{color:#ffe3ad}.status-helper button{margin-left:8px;font-weight:700}.status-helper.success{border-color:#3c7565;background:#142b27}.status-helper.error{border-color:#b27869;background:#362b2a}.form-grid button[type=button]{cursor:pointer}.entry-feedback-info{font-size:12px;color:#a8c4cf;padding:6px 0}.entry-spotlight{outline:2px solid #76d8b8;outline-offset:2px}
 
 .cloud-state{border:1px solid #477a75;background:#0e2930;border-radius:13px;margin:14px 0 3px;padding:12px 15px;color:#c8f9ed;font-size:13px}.cloud-state.error{border-color:#a85652;background:#361d26;color:#ffc8ba}.cloud-state.wait{border-color:#877343;background:#2e281d;color:#f2d9a2}
-#record-editor{width:min(540px,calc(100% - 28px));max-height:85dvh;overflow:auto;background:#132030;color:#e5edf6;border:1px solid #405269;border-radius:14px;padding:20px}
-#record-editor::backdrop{background:#050a13b8}
-#record-editor label{display:grid;gap:4px;margin-bottom:9px}
+:is(#record-editor,#category-editor){width:min(540px,calc(100% - 28px));max-height:85dvh;overflow:auto;background:#132030;color:#e5edf6;border:1px solid #405269;border-radius:14px;padding:20px}
+:is(#record-editor,#category-editor)::backdrop{background:#050a13b8}
+:is(#record-editor,#category-editor) label{display:grid;gap:4px;margin-bottom:9px}
 #record-editor fieldset{border:1px solid #405269;border-radius:8px;max-height:160px;overflow:auto;margin:10px 0}
 #record-editor fieldset label{display:flex;align-items:center;gap:8px;margin:4px 0}
 #record-editor textarea{min-height:70px}
@@ -46,17 +46,18 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
 <section class="panel pain-panel" id="pain-section">
   <div class="row between"><div><span class="section-kicker">PAIN → GOAL / PROBLEM ATLAS</span><h2>痛点金字塔</h2><p>从痛点出发，关联已有目标；未覆盖的问题标记为「待登记目标」。分层为可调整的初稿，不代表所有痛点已解决。</p></div><small id="pain-count-note">20 个痛点</small></div>
   <div class="pain-layout">
-    <div class="pyramid-panel"><div class="row between"><b>痛点层级</b><button id="all-pains">查看全部</button></div><div id="pyramid" class="pyramid" aria-label="点击金字塔各层筛选痛点"></div><p class="tiny">下层偏向基本保障；上层偏向关系、资源与成长。仅是登记排序，可后续调整。</p></div>
+    <div class="pyramid-panel"><div class="row between"><b>痛点层级</b><button id="all-pains">查看全部</button></div><div id="pain-category-path" class="row"></div><div id="pyramid" class="pyramid" aria-label="点击金字塔各层筛选痛点"></div><p class="tiny">下层偏向基本保障；上层偏向关系、资源与成长。仅是登记排序，可后续调整。</p></div>
     <div class="pain-detail" id="pain-detail" aria-live="polite"></div>
   </div>
   <div class="subheader"><div class="row between"><b>痛点登记簿</b><small id="pain-matches"></small></div><div class="row"><input id="pain-q" placeholder="搜索痛点编号、名称或对应目标" aria-label="搜索痛点"><button id="clear-pain-filter">清除筛选</button></div><div id="pain-register" class="pain-register"></div></div>
   <details id="pain-entry" data-entry><summary>＋ 继续登记痛点</summary><form id="pain-add-form" class="form-grid" novalidate><label>痛点名称<input id="new-pain-name" required maxlength="100" placeholder="填写真实需要解决的问题"></label><label>暂定层级<select id="new-pain-tier"><option value="L0">P0 生存保障</option><option value="L1">P1 经济与职业安全</option><option value="L2">P2 健康与生活</option><option value="L3">P3 资源与跨境能力</option><option value="L4">P4 情感与关系</option><option value="L5">P5 发展与商业</option></select></label><label>补充说明（选填）<input id="new-pain-note" maxlength="230" placeholder="具体场景、影响等"></label><button class="primary" type="button" id="confirm-pain-add">确认登记痛点</button></form><div class="entry-error" id="pain-entry-feedback" role="status" aria-live="polite"></div></details>
 </section>
-<div class="layout"><section class="stage"><div class="toolbar"><b>目标星图</b><button id="home">总览</button><button id="back">上一级</button><div class="tools"><button id="minus" aria-label="缩小">−</button><button id="plus" aria-label="放大">＋</button><button id="reset">复位视角</button><button id="toggle-orbit" type="button">暂停旋转</button></div></div><div id="scene"><canvas aria-label="三维目标树，可用右侧节点列表浏览相同内容"></canvas></div><div class="caption">拖动旋转 · 滚轮缩放 · 点击节点进入下一层　｜　大小和距离不代表金额</div></section><aside id="detail"></aside></div>
+<div class="layout"><section class="stage"><div class="toolbar"><b>目标星图</b><button id="home">总览</button><button id="goal-category-add" class="editor-only" type="button">新增分类</button><button id="back">上一级</button><div class="tools"><button id="minus" aria-label="缩小">−</button><button id="plus" aria-label="放大">＋</button><button id="reset">复位视角</button><button id="toggle-orbit" type="button">暂停旋转</button></div></div><div id="scene"><canvas aria-label="三维目标树，可用右侧节点列表浏览相同内容"></canvas></div><div class="caption">拖动旋转 · 滚轮缩放 · 点击节点进入下一层　｜　大小和距离不代表金额</div></section><aside id="detail"></aside></div>
 <section class="panel"><details open><summary>目标登记簿 <small id="goal-count-note">　GOAL INDEX / 30</small></summary><div class="row"><input id="q" aria-label="搜索目标" placeholder="搜索编号或目标名称"><select id="filter" aria-label="按分支筛选"><option value="">全部分支</option><option>G001</option><option>G002</option><option>G003</option></select><small id="matches"></small></div><div id="register" class="register"></div>
 <details class="subheader" id="goal-entry" data-entry><summary>＋ 新增目标（保留原编号，自动顺延）</summary>
 <form id="goal-add-form" class="form-grid" novalidate>
 <label>所属分支<select id="new-goal-branch"><option value="G001">G001 现金财富</option><option value="G002">G002 生活消费</option><option value="G003">G003 投资资产</option></select></label>
+<label>显示分类<select id="new-goal-category"><option value="">沿用所属分支</option></select></label>
 <label>新目标名称<input id="new-goal-name" required maxlength="100" placeholder="填写新目标"></label>
 <label>目标预算/金额（元，可不填）<input id="new-goal-budget" type="number" min="0" step="0.01" placeholder="待确认"></label>
 <label>说明（选填）<input id="new-goal-note" maxlength="250" placeholder="数量、周期或交付条件"></label>
@@ -71,6 +72,21 @@ if (readOnlyView) document.documentElement.dataset.readOnly = '';
    <button class="primary" type="submit">保存修改</button>
    <button type="button" id="record-delete" class="danger">删除</button>
    <button type="button" id="record-close">关闭</button>
+  </div>
+ </form>
+</dialog>
+<dialog id="category-editor" aria-labelledby="category-title">
+ <form id="category-form">
+  <h2 id="category-title"></h2>
+  <label>分类名称<input id="category-name" required maxlength="100"></label>
+  <label>上级分类<select id="category-parent"></select></label>
+  <label>排序（数字越小越靠前）<input id="category-order" type="number" step="1"></label>
+  <p id="category-feedback" role="status"></p>
+  <div class="row">
+   <button class="primary" type="submit">保存分类</button>
+   <button id="category-add-child" type="button">新增下级</button>
+   <button id="category-delete" type="button">删除分类</button>
+   <button id="category-close" type="button">关闭</button>
   </div>
  </form>
 </dialog><script>
@@ -88,7 +104,8 @@ function save(){try{localStorage.setItem(key,JSON.stringify(records));el('msg').
 function route(id){selected=nodes.get(id);focus=selected.children.length?selected:nodes.get(selected.parent);yaw=0;pitch=.13;zoom=1;refresh()}
 function activateGoal(id){
  route(id);
- openRecordEditor('goals',id);
+ if(id===root.id||cloudSnapshot?.hierarchy?.goals.some(node=>node.id===id))openCategoryEditor('goals',id===root.id?null:id);
+ else openRecordEditor('goals',id);
 }
 function button(name,handler){const newButton=document.createElement('button');newButton.textContent=name;newButton.onclick=handler;return newButton}
 function detail(){const n=selected, actual=records[n.id],crumb=[];let ancestor=n;while(ancestor){crumb.unshift(ancestor.name);ancestor=nodes.get(ancestor.parent)}const side=el('detail');side.innerHTML=`<small class="eyebrow">NODE INSPECTOR　/　${n.id}</small><h2>${esc(n.name)}</h2><small class="dim">${esc(crumb.join(' › '))}</small><p>${esc(n.note)}</p>`;if(n.budget!=null)side.innerHTML+=`<label>${n.id==='A'?'含备用金的保障目标':n.id.startsWith('G002')||['B','C','D'].includes(n.id)?'60 年消费预算':n.id.startsWith('M')?'现金阶段门槛':'目标金额'}</label><div class="amount">${money(n.budget)}</div>`;if(n.measure){const comparison=actual===undefined?'尚无实际记录':n.budget===0?(actual===0?'已记录零支出':'已发生套餐外支出'):n.id.startsWith('G002')?'预算使用率 '+(actual/n.budget*100).toFixed(1)+'%（不是完成率）':'目标达成比例 '+(actual/n.budget*100).toFixed(2)+'%';side.innerHTML+=`<p>${comparison}${readOnlyView&&actual!==undefined?' · 实际金额 '+money(actual):''}</p><form id="entry"><label>${n.measure}（元）<input id="actual" type="number" min="0" max="90071992547409" step="0.01" required placeholder="待确认" value="${actual??''}"></label><button class="primary">保存实际值</button> <button type="button" id="unset" ${actual===undefined?'disabled':''}>撤回为待确认</button></form>`;el('entry').onsubmit=event=>{event.preventDefault();const value=el('actual').valueAsNumber;if(valid(n.id,value)){records[n.id]=value;save()}};el('unset').onclick=()=>{delete records[n.id];save()}}
@@ -100,7 +117,7 @@ el('exporter').onclick=()=>{const anchor=document.createElement('a');const url=U
 const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),palette=['#81e5c4','#f2b978','#91b1ff'];function color(n){let top=n;while(top.parent&&top.parent!==root.id)top=nodes.get(top.parent);return palette[root.children.indexOf(top)]||'#d7f9eb'}
 function draw(){const width=canvas.clientWidth,height=canvas.clientHeight,dpr=Math.min(devicePixelRatio||1,2);if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(height*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);const size=Math.min(width*.45,height*.72)*zoom;function project(x,y,z){const xx=x*Math.cos(yaw)+z*Math.sin(yaw),zz=z*Math.cos(yaw)-x*Math.sin(yaw),yy=y*Math.cos(pitch)-zz*Math.sin(pitch),depth=zz*Math.cos(pitch)+y*Math.sin(pitch),scale=3.5/(3.5-depth);return {x:width*.5+xx*size*scale,y:height*.48+yy*size*scale,z:depth,scale}}function path(points,stroke,line=1){ctx.beginPath();points.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.stroke()}function ring(radius,tilt,shade){const points=[];for(let step=0;step<=128;step++){const theta=step*2*Math.PI/128;points.push(project(radius*Math.cos(theta),radius*Math.sin(theta)*Math.sin(tilt),radius*Math.sin(theta)*Math.cos(tilt)))}path(points,shade)}
 for(let i=0;i<100;i++){const x=((i*947)%997)/997*width,y=((i*613)%991)/991*height;ctx.fillStyle=i%7===0?'#7796ab':'#344456';ctx.fillRect(x,y,i%7===0?1.4:1,1)}ring(.97,.44,'#344957');ring(1.01,.44,'#253749');ring(.57,.44,'#273d49');const points=[],origin=project(0,0,0);points.push({...origin,n:focus,r:focus===root?29:20,central:true});const children=focus.children,total=children.length;children.forEach((child,index)=>{let theta=(index/total)*2*Math.PI-Math.PI/2;let x,y,z;if(total===1){x=.60;y=-.18;z=.23}else if(total<=8){x=Math.cos(theta)*.84;y=Math.sin(theta)*.48;z=Math.sin(theta+.55)*.36}else{const col=index%4,row=Math.floor(index/4);x=(col-1.5)*.49;y=(row-1.5)*.30;z=Math.sin(index*1.8)*.18+.02}const p=project(x,y,z);path([origin,p],color(child)+'70',1.25);points.push({...p,n:child,r:total>8?6:focus===root?15:10,central:false});if(focus===root){for(let k=0;k<child.children.length;k++){const a=(k/(child.children.length||1))*Math.PI*2+.7;const s=project(x+Math.cos(a)*.18,y+Math.sin(a)*.095,z+.14*Math.sin(a));path([p,s],color(child)+'44');ctx.fillStyle=color(child)+'aa';ctx.beginPath();ctx.arc(s.x,s.y,2.4,0,7);ctx.fill()}}});hits=[];const labels=[],mobile=width<500;points.sort((left,right)=>left.z-right.z);for(const p of points){const c=color(p.n),r=p.r*Math.min(1.3,Math.max(.76,p.scale))*Math.min(1,zoom);let glow=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r*2.8);glow.addColorStop(0,c+'65');glow.addColorStop(1,c+'00');ctx.fillStyle=glow;ctx.fillRect(p.x-r*2.8,p.y-r*2.8,r*5.6,r*5.6);let sphere=ctx.createRadialGradient(p.x-r*.34,p.y-r*.38,0,p.x,p.y,r);sphere.addColorStop(0,'#f1fffb');sphere.addColorStop(.35,c);sphere.addColorStop(1,'#263c4d');ctx.fillStyle=sphere;ctx.beginPath();ctx.arc(p.x,p.y,r,0,2*Math.PI);ctx.fill();if(p.central||selected===p.n){ctx.strokeStyle=c+'99';ctx.beginPath();ctx.ellipse(p.x,p.y,r*1.44,r*.55,-.4,0,2*Math.PI);ctx.stroke()}hits.push({...p,r:Math.max(15,r+4)});labels.push({...p,r,c})}
-const occupied=[];for(const p of labels.sort((a,b)=>Number(b.n===selected)-Number(a.n===selected)||Number(b.central)-Number(a.central))){const short={'G001':'现金财富积累','G002':'生活物质与消费','G003':'投资资产','A':'温饱保障 · P0','B':'房产交通与数码','C':'健康与运动','D':'软件及数字服务'};const title=short[p.n.id]||p.n.name;ctx.font=`${p.central?'600':'500'} ${mobile?11:13}px system-ui`;const tw=ctx.measureText(title).width+14;const left=Math.max(2,Math.min(width-tw-2,p.x-tw/2));let top=p.y+p.r+6;const blocked=t=>occupied.some(box=>left<box.x+box.w&&left+tw>box.x&&t<box.y+box.h&&t+21>box.y);if(blocked(top))top=p.y-p.r-24;if(blocked(top)&&total>8&&p.n!==selected)continue;ctx.fillStyle='#101c29ec';ctx.fillRect(left,top,tw,21);ctx.fillStyle=p.c;ctx.textAlign='center';ctx.fillText(title,left+tw/2,top+15);occupied.push({x:left,y:top,w:tw,h:21});hits.push({n:p.n,box:{x:left,y:top,w:tw,h:21}})}ctx.textAlign='left';ctx.fillStyle='#88a3af';ctx.font='11px Consolas,monospace';ctx.fillText('ATLAS  /  '+focus.id,16,23)}
+const occupied=[];for(const p of labels.sort((a,b)=>Number(b.n===selected)-Number(a.n===selected)||Number(b.central)-Number(a.central))){const short={'G001':'现金财富积累','G002':'生活物质与消费','G003':'投资资产','A':'温饱保障 · P0','B':'房产交通与数码','C':'健康与运动','D':'软件及数字服务'};const title=p.n.categoryNode?p.n.name:short[p.n.id]||p.n.name;ctx.font=`${p.central?'600':'500'} ${mobile?11:13}px system-ui`;const tw=ctx.measureText(title).width+14;const left=Math.max(2,Math.min(width-tw-2,p.x-tw/2));let top=p.y+p.r+6;const blocked=t=>occupied.some(box=>left<box.x+box.w&&left+tw>box.x&&t<box.y+box.h&&t+21>box.y);if(blocked(top))top=p.y-p.r-24;if(blocked(top)&&total>8&&p.n!==selected)continue;ctx.fillStyle='#101c29ec';ctx.fillRect(left,top,tw,21);ctx.fillStyle=p.c;ctx.textAlign='center';ctx.fillText(title,left+tw/2,top+15);occupied.push({x:left,y:top,w:tw,h:21});hits.push({n:p.n,box:{x:left,y:top,w:tw,h:21}})}ctx.textAlign='left';ctx.fillStyle='#88a3af';ctx.font='11px Consolas,monospace';ctx.fillText('ATLAS  /  '+focus.id,16,23)}
 let drag=null;canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:0}};canvas.onpointermove=e=>{if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.hypot(dx,dy);yaw+=dx*.009;pitch=Math.max(-1.35,Math.min(1.35,pitch+dy*.009));drag.x=e.clientX;drag.y=e.clientY;draw()};canvas.onpointerup=e=>{if(!drag||drag.id!==e.pointerId)return;if(drag.moved<6){const bounds=canvas.getBoundingClientRect(),x=e.clientX-bounds.left,y=e.clientY-bounds.top;const p=[...hits].reverse().find(mark=>mark.box?x>=mark.box.x&&x<=mark.box.x+mark.box.w&&y>=mark.box.y&&y<=mark.box.y+mark.box.h:Math.hypot(x-mark.x,y-mark.y)<mark.r);if(p)activateGoal(p.n.id)}drag=null};canvas.onpointercancel=()=>drag=null;function magnify(factor){zoom=Math.max(.55,Math.min(2.5,zoom*factor));draw()}canvas.addEventListener('wheel',e=>{e.preventDefault();magnify(e.deltaY<0?1.07:1/1.07)},{passive:false});el('plus').onclick=()=>magnify(1.15);el('minus').onclick=()=>magnify(1/1.15);el('reset').onclick=()=>{yaw=0;pitch=.13;zoom=1;draw()};new ResizeObserver(draw).observe(canvas);refresh();
 const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
 const orbitButton=el('toggle-orbit');
@@ -117,7 +134,7 @@ function scheduleOrbit(){
 }
 function advanceOrbit(time){
  orbitFrame=requestAnimationFrame(advanceOrbit);
- if(drag||el('record-editor').open){lastOrbitTime=null;return}
+ if(drag||el('record-editor').open||el('category-editor').open){lastOrbitTime=null;return}
  lastOrbitTime??=time;
  const elapsed=time-lastOrbitTime;
  if(elapsed<32)return;
@@ -159,7 +176,7 @@ customGoals=registeredGoals;
 const v17saved=loadJson(key,{});if(v17saved&&typeof v17saved==='object')for(const [id,val] of Object.entries(v17saved))if(valid(id,val))records[id]=val;
 function allBudget(){return originalBudget+customGoals.reduce((sum,g)=>sum+(g.parent==='G002'&&g.budget!=null?g.budget:0),0)}
 function allInvestment(){return originalInvestment+customGoals.reduce((sum,g)=>sum+(g.parent==='G003'&&g.budget!=null?g.budget:0),0)}
-function updateBudgetView(){nodes.get('G002').budget=allBudget();nodes.get('G003').budget=allInvestment();el('budget-total').textContent=formatWan(allBudget());el('goal-count-note').textContent=' GOAL INDEX / '+goals.length;root.note='3 大分支、'+goals.length+' 项具体目标；额外登记 '+customGoals.length+' 项。'}
+function updateBudgetView(){if(nodes.has('G002'))nodes.get('G002').budget=allBudget();if(nodes.has('G003'))nodes.get('G003').budget=allInvestment();el('budget-total').textContent=formatWan(allBudget());el('goal-count-note').textContent=' GOAL INDEX / '+goals.length;root.note=root.children.filter(node=>!node.measure).length+' 个顶层分支、'+goals.length+' 项具体目标；额外登记 '+customGoals.length+' 项。'}
 function makeNextGoalId(branch){let high=0;for(const g of goals){const m=g.id.match(new RegExp('^'+branch+'-(\\d+)$'));if(m)high=Math.max(high,Number(m[1]))}return branch+'-'+String(high+1).padStart(2,'0')}
 el('goal-add-form').onsubmit=e=>{e.preventDefault();const parent=el('new-goal-branch').value,name=el('new-goal-name').value.trim(),raw=el('new-goal-budget').value.trim(),budget=raw===''?null:Number(raw),note=el('new-goal-note').value.trim(),feedback=el('goal-entry-feedback');if(!name){feedback.textContent='请先填写新目标名称（必填）。';el('new-goal-name').focus();return}const duplicate=goals.find(g=>g.parent===parent&&g.name.trim()===name);if(duplicate){feedback.textContent='已登记：'+duplicate.id+' · '+name+'；未重复建档。';route(duplicate.id);return}if(!['G001','G002','G003'].includes(parent)||budget!==null&&(!Number.isFinite(budget)||budget<0||budget>1e13)){feedback.textContent='所属分支或预算金额无效，请检查。';el('new-goal-budget').focus();return}const id=makeNextGoalId(parent);const item={id,name,parent,budget,note:note||'后续可补充完成标准与实际数据；金额尚待核实。'};customGoals.push(item);add(item.id,item.name,item.parent,item.budget,item.note,parent==='G002'?'累计实际支出':parent==='G003'?'实际投入本金':'实际达成金额');const saved=persistV18(goalsKey,customGoals);updateBudgetView();refresh();simulateV18();renderPain();route(id);el('new-goal-name').value='';el('new-goal-budget').value='';el('new-goal-note').value='';feedback.innerHTML='<div class="entry-success">'+esc(id)+' · '+esc(name)+(saved?' 已登记并保存在当前浏览器':' 已加入当前页面，但未持久保存；请导出备份')+'。原有目标不变。</div>';feedback.scrollIntoView({block:'nearest'});el('msg').textContent= saved?'登记成功：'+id+' · '+name+'。已保存至当前浏览器。':'登记成功但无法持久保存：'+id+'。请导出备份。'};
 
@@ -197,14 +214,14 @@ let extraPains=loadJson(painsKey,[]);if(!Array.isArray(extraPains))extraPains=[]
 extraPains=extraPains.filter(p=>p&&/^P\d{3,}$/.test(p.id)&&typeof p.name==='string'&&p.name&&tiers.some(t=>t.id===p.tier)&&!painDefs.some(q=>q.id===p.id));
 let painLinks=loadJson(linksKey,{});if(!painLinks||typeof painLinks!=='object'||Array.isArray(painLinks))painLinks={};
 const allPains=()=>[...painDefs,...extraPains], painById=id=>allPains().find(x=>x.id===id);
-let painFocus='P001',painTierFilter=null;
+let painFocus='P001',painTierFilter=null,activeHierarchy=null;
 function linkedIds(p){let stored=painLinks[p.id];return [...new Set([...(p.goals||[]),...(Array.isArray(stored)?stored:[])])].filter(id=>nodes.has(id))}
-function tierName(id){const t=tiers.find(x=>x.id===id);return t?t.priority+' '+t.name:'待确认'}
-function renderPyramid(){let box=el('pyramid');box.replaceChildren();for(const tier of [...tiers].reverse()){const count=allPains().filter(p=>p.tier===tier.id).length;let b=document.createElement('button');b.type='button';b.className='pyramid-step'+(painTierFilter===tier.id?' active-step':'');b.style.setProperty('--pw',tier.width+'%');b.style.setProperty('--pc',tier.color);b.setAttribute('aria-pressed',String(painTierFilter===tier.id));b.innerHTML='<span class="pn">'+tier.priority+'</span><span>'+esc(tier.name)+'</span><span class="pcount">'+count+'项</span>';b.onclick=()=>{painTierFilter=painTierFilter===tier.id?null:tier.id;renderPain()};box.append(b)}}
+function tierName(id){if(activeHierarchy)return activeHierarchy.pains.find(node=>node.id===id)?.name||'待分类';const t=tiers.find(x=>x.id===id);return t?t.priority+' '+t.name:'待确认'}
+function renderPyramid(){if(activeHierarchy){renderPainCategories();return}let box=el('pyramid');box.replaceChildren();for(const tier of [...tiers].reverse()){const count=allPains().filter(p=>p.tier===tier.id).length;let b=document.createElement('button');b.type='button';b.className='pyramid-step'+(painTierFilter===tier.id?' active-step':'');b.style.setProperty('--pw',tier.width+'%');b.style.setProperty('--pc',tier.color);b.setAttribute('aria-pressed',String(painTierFilter===tier.id));b.innerHTML='<span class="pn">'+tier.priority+'</span><span>'+esc(tier.name)+'</span><span class="pcount">'+count+'项</span>';b.onclick=()=>{painTierFilter=painTierFilter===tier.id?null:tier.id;renderPain()};box.append(b)}}
 function renderPainDetail(){const p=painById(painFocus);if(!p){el('pain-detail').textContent='请选择痛点';return}const linked=linkedIds(p);const box=el('pain-detail');box.innerHTML='<small class="section-kicker">PAIN INSPECTOR / '+esc(p.id)+'</small><h3>'+esc(p.name)+'</h3><p class="tiny">'+esc(tierName(p.tier))+'</p><p>'+esc(p.note||'具体情况待补充。')+'</p><h3>对应目标</h3><div class="mapped" id="mapped-goals"></div><div class="map-add"><select id="pain-select-goal" aria-label="选择要关联的目标"><option value="">选择已有目标…</option></select><button type="button" class="primary" id="pain-link">关联目标</button></div><p class="tiny">不能直接对应的痛点，先保留“待登记目标”；新增目标后再关联。关联不等于已经解决。</p>';
 const area=el('mapped-goals');if(!linked.length)area.innerHTML='<span class="tiny">待登记对应目标</span>';else for(const id of linked){let b=document.createElement('button');b.className='chip';b.textContent=id+' · '+nodes.get(id).name;b.title='点击查看对应目标';b.onclick=()=>route(id);area.append(b)}
 const opts=el('pain-select-goal');for(const goal of goals){const opt=document.createElement('option');opt.value=goal.id;opt.textContent=goal.id+' · '+goal.name;opts.append(opt)}el('pain-link').onclick=()=>{const id=opts.value;if(!id||linked.includes(id))return;const arr=Array.isArray(painLinks[p.id])?painLinks[p.id]:[];painLinks[p.id]=[...new Set([...arr,id])];persistV18(linksKey,painLinks);renderPain()}}
-function renderPainRegister(){let query=el('pain-q').value.trim().toLowerCase();const items=allPains().filter(p=>(painTierFilter===null||p.tier===painTierFilter)&&[p.id,p.name,...linkedIds(p)].join(' ').toLowerCase().includes(query));el('pain-count-note').textContent=allPains().length+' 个痛点';el('pain-matches').textContent='匹配 '+items.length+' 项';const target=el('pain-register');target.replaceChildren();for(const p of items){const b=document.createElement('button');b.className='pain-item'+(painFocus===p.id?' active-pain':'');b.innerHTML='<small>'+esc(p.id)+' / '+esc(tierName(p.tier))+'</small><strong>'+esc(p.name)+'</strong><span class="tag">'+(linkedIds(p).length?linkedIds(p).map(esc).join('、'):'待登记对应目标')+'</span>';b.onclick=()=>{painFocus=p.id;renderPain();openRecordEditor('pains',p.id)};target.append(b)}if(!items.length)target.textContent='没有匹配的痛点。'}
+function renderPainRegister(){let query=el('pain-q').value.trim().toLowerCase();const items=allPains().filter(p=>(painTierFilter===null||belongsToPainCategory(p.tier,painTierFilter))&&[p.id,p.name,...linkedIds(p)].join(' ').toLowerCase().includes(query));el('pain-count-note').textContent=allPains().length+' 个痛点';el('pain-matches').textContent='匹配 '+items.length+' 项';const target=el('pain-register');target.replaceChildren();for(const p of items){const b=document.createElement('button');b.className='pain-item'+(painFocus===p.id?' active-pain':'');b.innerHTML='<small>'+esc(p.id)+' / '+esc(tierName(p.tier))+'</small><strong>'+esc(p.name)+'</strong><span class="tag">'+(linkedIds(p).length?linkedIds(p).map(esc).join('、'):'待登记对应目标')+'</span>';b.onclick=()=>{painFocus=p.id;renderPain();openRecordEditor('pains',p.id)};target.append(b)}if(!items.length)target.textContent='没有匹配的痛点。'}
 function renderPain(){renderPyramid();renderPainDetail();renderPainRegister()}
 el('all-pains').onclick=()=>{painTierFilter=null;renderPain()};el('clear-pain-filter').onclick=()=>{painTierFilter=null;el('pain-q').value='';renderPain()};el('pain-q').oninput=renderPainRegister;
 el('pain-add-form').onsubmit=e=>{e.preventDefault();const name=el('new-pain-name').value.trim(),tier=el('new-pain-tier').value,note=el('new-pain-note').value.trim(),feedback=el('pain-entry-feedback');if(!name){feedback.textContent='请先填写痛点名称（必填）。';el('new-pain-name').focus();return}if(!tiers.some(t=>t.id===tier)){feedback.textContent='请选择有效层级。';return}const next=allPains().reduce((n,p)=>Math.max(n,Number(p.id.slice(1))),0)+1;const pain={id:'P'+String(next).padStart(3,'0'),name,tier,note:note||'对应目标待确认。',goals:[]};extraPains.push(pain);const saved=persistV18(painsKey,extraPains);painFocus=pain.id;painTierFilter=null;el('new-pain-name').value='';el('new-pain-note').value='';renderPain();feedback.innerHTML='<div class="entry-success">'+esc(pain.id)+' · '+esc(name)+(saved?' 已登记并保存在当前浏览器':' 已加入当前页面，但未持久保存；请导出备份')+'。</div>';feedback.scrollIntoView({block:'nearest'});el('msg').textContent=saved?'登记成功：'+pain.id+' · '+name+'。已保存至当前浏览器。':'登记成功但无法持久保存：'+pain.id+'。请导出备份。'};
@@ -264,7 +281,96 @@ const cloudEl=el('cloud-state');
 let cloudSnapshot=null,cloudReady=false,cloudBusy=false;
 let cloudSyncing=false,lastCloudRefreshAt=0;
 // 仅用于恢复 Notion 中原有目标的可视化分组，不会写入 Notion。
-const coreParentById=new Map(goals.map(g=>[g.id,g.parent]));
+function categoryOptions(select,kind,excluded=null){
+ const previous=select.value;
+ const rootId=kind==='goals'?root.id:'';
+ const categories=activeHierarchy?.[kind]||[];
+ select.replaceChildren(new Option(kind==='goals'?'目标树根目录':'金字塔顶层',rootId));
+ function addChildren(parent,depth){
+   for(const node of categories.filter(category=>category.parent===parent&&category.id!==excluded)){
+     select.add(new Option('　'.repeat(depth)+node.name,node.id));
+     addChildren(node.id,depth+1);
+   }
+ }
+ addChildren(rootId,0);
+ if([...select.options].some(option=>option.value===previous))select.value=previous;
+}
+function applyGoalCategories(categories){
+ const active=new Set(categories.map(node=>node.id));
+ for(const node of nodes.values()){
+   if(node.categoryNode||['G001','G002','G003','A','B','C','D'].includes(node.id)){
+     node.categoryNode=true;
+     if(!active.has(node.id))nodes.delete(node.id);
+   }
+   node.children=node.children.filter(child=>!child.categoryNode&&!active.has(child.id)&&!['G001','G002','G003','A','B','C','D'].includes(child.id));
+ }
+ for(const category of categories){
+   const node=nodes.get(category.id)||add(category.id,category.name,null,null,'');
+   node.name=category.name;node.parent=category.parent;node.categoryNode=true;
+ }
+ for(const category of categories)nodes.get(category.parent).children.push(nodes.get(category.id));
+ if(!nodes.has(selected.id))selected=root;
+ if(!nodes.has(focus.id))focus=root;
+}
+function belongsToPainCategory(id,ancestor){
+ if(!activeHierarchy)return id===ancestor;
+ for(let category=id;category;category=activeHierarchy.pains.find(node=>node.id===category)?.parent){
+   if(category===ancestor)return true;
+ }
+ return false;
+}
+function renderPainCategories(){
+ const categories=activeHierarchy.pains,box=el('pyramid'),path=el('pain-category-path');
+ const current=categories.find(node=>node.id===painTierFilter);
+ path.replaceChildren();box.replaceChildren();
+ function selectCategory(id){painTierFilter=id;renderPain()}
+ if(current){
+   path.append(button('返回上级',()=>selectCategory(current.parent||null)));
+   path.append(document.createTextNode(current.name));
+ }
+ if(!readOnlyView)path.append(button(current?'编辑当前分类':'新增顶层分类',()=>openCategoryEditor('pains',current?.id??null)));
+ const siblings=categories.filter(node=>node.parent===(current?.id||''));
+ if(!siblings.length)box.textContent=current?'暂无下级分类':'暂无分类';
+ for(const [index,node] of [...siblings].reverse().entries()){
+   const count=allPains().filter(pain=>belongsToPainCategory(pain.tier,node.id)).length;
+   const item=button(node.name+' · '+count+' 项',()=>selectCategory(node.id));
+   item.className='pyramid-step';
+   item.style.setProperty('--pw',current?'100%':Math.min(100,54+index*46/Math.max(1,siblings.length-1))+'%');
+   item.style.setProperty('--pc',tiers.find(tier=>tier.id===node.id)?.color||'#67d8bd');
+   box.append(item);
+ }
+}
+const categoryDialog=el('category-editor');
+el('category-close').onclick=()=>categoryDialog.close();
+el('goal-category-add').onclick=()=>openCategoryEditor('goals',null,selected.categoryNode?selected.id:root.id);
+function openCategoryEditor(kind,id,parent){
+ if(readOnlyView||!cloudReady||cloudBusy)return;
+ const item=activeHierarchy?.[kind].find(node=>node.id===id);
+ const form=el('category-form'),name=el('category-name'),parents=el('category-parent'),order=el('category-order'),feedback=el('category-feedback');
+ const addChild=el('category-add-child'),remove=el('category-delete');
+ el('category-title').textContent=item?'编辑分类':'新增分类';
+ name.value=item?.name||'';
+ categoryOptions(parents,kind,id);
+ parents.value=item?.parent??parent??(kind==='goals'?root.id:'');
+ order.value=item?.order??'';
+ order.parentElement.hidden=!item;
+ addChild.hidden=remove.hidden=!item;
+ feedback.textContent='';
+ async function submit(method,payload){
+   if(cloudBusy)return;
+   const url='/api/categories/'+kind+(item?'/'+encodeURIComponent(item.id):'');
+   await withCloudSave(async()=>{
+     await cloudApi(url,method,payload);
+     categoryDialog.close();
+     return '分类已保存到 Notion。';
+   },feedback);
+ }
+ form.onsubmit=event=>{event.preventDefault();const payload={name:name.value,parent:parents.value};if(item&&order.value!=='')payload.order=order.valueAsNumber;submit(item?'PATCH':'POST',payload)};
+ addChild.onclick=()=>openCategoryEditor(kind,null,id);
+ remove.onclick=()=>{if(confirm('删除分类「'+item.name+'」？'))submit('DELETE')};
+ if(!categoryDialog.open)categoryDialog.showModal();
+}
+
 const coreGoalId=id=>id==='G001-01'||/^G002-(0[1-9]|1\d|2[0-6])$/.test(id)||/^G003-0[1-3]$/.test(id);
 function cloudStatus(message,kind='ok'){
  cloudEl.textContent=message;cloudEl.className='cloud-state'+(kind==='ok'?'':kind==='wait'?' wait':' error');
@@ -290,6 +396,16 @@ async function loadCloud(){
  // 只有拿到有效云端快照后才开始更新视图，杜绝把网络故障误当成空数据。
  if(!Array.isArray(data.goals)||!Array.isArray(data.pains)||!data.summary)throw Error('Notion 返回数据结构不完整');
  cloudSnapshot=data;
+ activeHierarchy=data.hierarchy;
+ if(activeHierarchy){
+   applyGoalCategories(activeHierarchy.goals);
+   const goalCategory=el('new-goal-category'),previous=goalCategory.value;
+   categoryOptions(goalCategory,'goals');
+   goalCategory.add(new Option('沿用所属分支',''),0);
+   goalCategory.value=[...goalCategory.options].some(option=>option.value===previous)?previous:'';
+   categoryOptions(el('new-pain-tier'),'pains');
+   if(!activeHierarchy.pains.some(node=>node.id===painTierFilter))painTierFilter=null;
+ }
  const allRemoteIds=new Set(data.goals.map(g=>g.id));
  for(const goal of [...goals]){
    if(allRemoteIds.has(goal.id))continue;
@@ -306,12 +422,12 @@ async function loadCloud(){
    const index=goals.indexOf(goal);if(index>=0)goals.splice(index,1);
  }
  for(const r of data.goals){
-   const parentId=coreParentById.get(r.id)||(nodes.has(r.branch)?r.branch:root.id);
+   const parentId=nodes.has(r.category)?r.category:(nodes.has(r.branch)?r.branch:root.id);
    if(!nodes.has(r.id)){
      add(r.id,r.name,nodes.has(parentId)?parentId:root.id,r.budget,r.note,r.branch==='G002'?'累计实际支出':r.branch==='G003'?'实际投入本金':'实际达成金额');
    }
    const node=nodes.get(r.id);node.name=r.name;node.branch=r.branch||r.id.slice(0,4);node.budget=r.budget;node.note=r.note;
-   if(node.parent!==parentId&&nodes.has(parentId)){
+   if(node.parent!==parentId||!nodes.get(parentId).children.includes(node)){
      const previous=nodes.get(node.parent);
      if(previous)previous.children=previous.children.filter(c=>c!==node);
      node.parent=parentId;nodes.get(parentId).children.push(node);
@@ -327,12 +443,12 @@ async function loadCloud(){
  customGoals=data.goals.filter(g=>g.id!==g.pageId&&!coreGoalId(g.id)).map(g=>({id:g.id,name:g.name,parent:g.branch,budget:g.budget,note:g.note}));
  for(const k of Object.keys(records))delete records[k];
  for(const r of data.goals)if(typeof r.actual==='number')records[r.id]=r.actual;
- painDefs.splice(0,painDefs.length,...data.pains.filter(p=>Number(p.id.slice(1))<=20).map(p=>({...p,goals:p.links||[]})));
- extraPains=data.pains.filter(p=>Number(p.id.slice(1))>20).map(p=>({...p,goals:p.links||[]}));
+ painDefs.splice(0,painDefs.length,...data.pains.filter(p=>Number(p.id.slice(1))<=20).map(p=>({...p,tier:p.category??p.tier,goals:p.links||[]})));
+ extraPains=data.pains.filter(p=>Number(p.id.slice(1))>20).map(p=>({...p,tier:p.category??p.tier,goals:p.links||[]}));
  painLinks={};for(const p of data.pains)painLinks[p.id]=p.links||[];
  if(!painById(painFocus))painFocus=data.pains[0]?.id??null;
  // 子分组预算跟随 Notion 明细修改；A 组额外保留 163000 元温饱备用金假设。
- const subtotal=id=>(nodes.get(id)?.children||[]).reduce((sum,g)=>sum+(typeof g.budget==='number'?g.budget:0),0);
+ const subtotal=id=>(nodes.get(id)?.children||[]).reduce((sum,node)=>sum+(node.categoryNode?subtotal(node.id):node.budget||0),0);
  for(const id of ['B','C','D'])if(nodes.has(id))nodes.get(id).budget=subtotal(id);
  if(nodes.has('A'))nodes.get('A').budget=subtotal('A')+163000;
  updateBudgetView();renderPain();refresh();simulateV18();
@@ -375,7 +491,8 @@ el('goal-add-form').onsubmit=async event=>{
  if(budget!==null&&(!Number.isFinite(budget)||budget<0)){feedback.textContent='金额不能小于0';return}
  let createdId=null;
  await withCloudSave(async()=>{
-   const result=await cloudApi('/api/goals','POST',{branch,name,budget,note});
+   const category=el('new-goal-category').value;
+   const result=await cloudApi('/api/goals','POST',{branch,name,budget,note,...(category?{category}:{})});
    el('new-goal-name').value='';el('new-goal-budget').value='';el('new-goal-note').value='';
    createdId=result.goal.id;return '✓ 已登记 '+result.goal.id+' · '+name+'，并保存到 Notion 云端。';
  },feedback);
@@ -481,10 +598,13 @@ function openRecordEditor(kind,id){
  const note=field('备注',document.createElement('textarea'),item.note);
  note.maxLength=1000;
  const select=document.createElement('select');
- for(const [value,label] of isGoal?[['待确认','待确认'],['P0','P0']]:tiers.map(t=>[t.id,t.priority+' '+t.name])){
+ for(const [value,label] of isGoal?[['待确认','待确认'],['P0','P0']]:[]){
    select.add(new Option(label,value));
  }
- field(isGoal?'优先级':'层级',select,isGoal?item.priority:item.tier);
+ if(!isGoal)categoryOptions(select,'pains');
+ field(isGoal?'优先级':'层级',select,isGoal?item.priority:(item.category??item.tier));
+ let goalCategory;
+ if(isGoal){goalCategory=document.createElement('select');categoryOptions(goalCategory,'goals');field('显示分类',goalCategory,item.category??root.id);}
  let budget,actual,links=[];
  if(isGoal){
    const currency=(label,value)=>{
@@ -528,7 +648,7 @@ function openRecordEditor(kind,id){
  form.onsubmit=event=>{
    event.preventDefault();
    const values={name:name.value,note:note.value};
-   const edits=isGoal?{...values,priority:select.value,budget:budget.value===''?null:budget.valueAsNumber,actual:actual.value===''?null:actual.valueAsNumber}:{...values,tier:select.value,links:links.filter(input=>input.checked).map(input=>input.value)};
+   const edits=isGoal?{...values,category:goalCategory.value,priority:select.value,budget:budget.value===''?null:budget.valueAsNumber,actual:actual.value===''?null:actual.valueAsNumber}:{...values,category:select.value,links:links.filter(input=>input.checked).map(input=>input.value)};
    submit('PATCH',edits);
  };
  el('record-delete').onclick=()=>{
@@ -542,7 +662,7 @@ async function syncFromNotion(source='manual'){
  if(cloudBusy||cloudSyncing)return;
  if(source!=='startup'&&source!=='manual'&&document.visibilityState!=='visible')return;
  // 不自动覆盖用户尚未保存的表单或弹窗输入。
- if(el('record-editor').open){
+ if(el('record-editor').open||categoryDialog.open){
    if(source==='manual')el('msg').textContent='请先保存或关闭当前编辑弹窗，再同步 Notion。';
    return;
  }
